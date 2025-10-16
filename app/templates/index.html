@@ -1,0 +1,491 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SCENARI Translator - DCI</title>
+    <link rel="icon" type="image/jpeg" href="/static/logo-dci.jpg">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #1976D2 0%, #E85D3F 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            max-width: 750px;
+            width: 100%;
+            padding: 40px;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding-bottom: 20px;
+            border-bottom: 2px solid #f0f0f0;
+        }
+
+        .logo {
+            max-width: 180px;
+            height: auto;
+            margin-bottom: 20px;
+        }
+
+        h1 {
+            color: #424242;
+            margin-bottom: 10px;
+            font-size: 28px;
+            font-weight: 600;
+        }
+
+        .subtitle {
+            color: #757575;
+            margin-bottom: 0;
+            font-size: 15px;
+        }
+
+        .form-group {
+            margin-bottom: 24px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            color: #424242;
+            font-weight: 500;
+            font-size: 14px;
+        }
+
+        select, input[type="text"] {
+            width: 100%;
+            padding: 12px 16px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 15px;
+            transition: all 0.3s;
+            background: white;
+        }
+
+        select:focus, input[type="text"]:focus {
+            outline: none;
+            border-color: #1976D2;
+            box-shadow: 0 0 0 3px rgba(25, 118, 210, 0.1);
+        }
+
+        .language-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+        }
+
+        .file-input-wrapper {
+            position: relative;
+            overflow: hidden;
+            display: inline-block;
+            width: 100%;
+        }
+
+        .file-input-wrapper input[type="file"] {
+            position: absolute;
+            left: -9999px;
+        }
+
+        .file-input-label {
+            display: block;
+            padding: 16px;
+            background: #f5f5f5;
+            border: 2px dashed #ccc;
+            border-radius: 8px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .file-input-label:hover {
+            background: #ebebeb;
+            border-color: #1976D2;
+        }
+
+        .file-input-label.has-file {
+            background: #E8F5E9;
+            border-color: #4CAF50;
+        }
+
+        .file-name {
+            margin-top: 8px;
+            font-size: 13px;
+            color: #757575;
+        }
+
+        .btn {
+            width: 100%;
+            padding: 16px;
+            background: linear-gradient(135deg, #1976D2 0%, #E85D3F 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            box-shadow: 0 4px 12px rgba(25, 118, 210, 0.3);
+        }
+
+        .btn:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(25, 118, 210, 0.4);
+        }
+
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .progress {
+            margin-top: 20px;
+            display: none;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background: #e0e0e0;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        .progress-bar-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #1976D2, #E85D3F);
+            transition: width 0.3s;
+            animation: progress-animation 2s ease-in-out infinite;
+        }
+
+        @keyframes progress-animation {
+            0% { transform: translateX(-100%); }
+            100% { transform: translateX(400%); }
+        }
+
+        .progress-text {
+            text-align: center;
+            margin-top: 8px;
+            font-size: 14px;
+            color: #757575;
+        }
+
+        .report {
+            margin-top: 30px;
+            padding: 20px;
+            background: #f5f5f5;
+            border-radius: 8px;
+            display: none;
+        }
+
+        .report h3 {
+            color: #424242;
+            margin-bottom: 16px;
+            font-size: 18px;
+        }
+
+        .report-stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            gap: 12px;
+            margin-bottom: 16px;
+        }
+
+        .stat {
+            background: white;
+            padding: 12px;
+            border-radius: 6px;
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 24px;
+            font-weight: bold;
+            color: #1976D2;
+        }
+
+        .stat-label {
+            font-size: 12px;
+            color: #757575;
+            margin-top: 4px;
+        }
+
+        .download-btn {
+            margin-top: 16px;
+            background: linear-gradient(135deg, #4CAF50 0%, #2E7D32 100%);
+            box-shadow: 0 4px 12px rgba(76, 175, 80, 0.3);
+        }
+
+        .download-btn:hover {
+            box-shadow: 0 8px 20px rgba(76, 175, 80, 0.4);
+        }
+
+        .error {
+            margin-top: 20px;
+            padding: 16px;
+            background: #FFEBEE;
+            border-left: 4px solid #E85D3F;
+            border-radius: 4px;
+            display: none;
+        }
+
+        .error-text {
+            color: #C62828;
+            font-size: 14px;
+        }
+
+        .rtl-support {
+            direction: rtl;
+            text-align: right;
+        }
+
+        @media (max-width: 600px) {
+            .container {
+                padding: 24px;
+            }
+
+            .language-grid {
+                grid-template-columns: 1fr;
+            }
+
+            h1 {
+                font-size: 24px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <img src="/static/logo-dci.jpg" alt="Logo DCI" class="logo">
+            <h1>🌍 SCENARI Translator</h1>
+            <p class="subtitle">Traduisez vos fichiers XML SCENARI via Ollama</p>
+        </div>
+
+        <form id="translationForm">
+            <div class="language-grid">
+                <div class="form-group">
+                    <label for="source_lang">Langue source</label>
+                    <select id="source_lang" name="source_lang" required>
+                        {% for code, name in languages.items() %}
+                        <option value="{{ code }}">{{ name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="target_lang">Langue cible</label>
+                    <select id="target_lang" name="target_lang" required>
+                        {% for code, name in languages.items() %}
+                        <option value="{{ code }}" {% if code == 'en' %}selected{% endif %}>{{ name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label for="model">Modèle Ollama (optionnel)</label>
+                <input type="text" id="model" name="model" placeholder="{{ default_model }}" value="{{ default_model }}">
+            </div>
+
+            <div class="form-group">
+                <label>Fichier XML SCENARI (max {{ max_upload_mb }}MB)</label>
+                <div class="file-input-wrapper">
+                    <input type="file" id="file" name="file" accept=".xml,application/xml,text/xml" required>
+                    <label for="file" class="file-input-label" id="fileLabel">
+                        📄 Cliquez pour sélectionner un fichier XML
+                        <div class="file-name" id="fileName"></div>
+                    </label>
+                </div>
+            </div>
+
+            <button type="submit" class="btn" id="submitBtn">
+                🚀 Traduire le fichier
+            </button>
+        </form>
+
+        <div class="progress" id="progress">
+            <div class="progress-bar">
+                <div class="progress-bar-fill"></div>
+            </div>
+            <div class="progress-text">Traduction en cours...</div>
+        </div>
+
+        <div class="error" id="error">
+            <div class="error-text" id="errorText"></div>
+        </div>
+
+        <div class="report" id="report">
+            <h3>📊 Rapport de traduction</h3>
+            <div class="report-stats">
+                <div class="stat">
+                    <div class="stat-value" id="totalSegments">0</div>
+                    <div class="stat-label">Segments totaux</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-value" id="translatedSegments">0</div>
+                    <div class="stat-label">Traduits</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-value" id="failedSegments">0</div>
+                    <div class="stat-label">Échecs</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-value" id="duration">0s</div>
+                    <div class="stat-label">Durée</div>
+                </div>
+            </div>
+            <button class="btn download-btn" id="downloadBtn">
+                💾 Télécharger le fichier traduit
+            </button>
+        </div>
+    </div>
+
+    <script>
+        const rtlLanguages = {{ rtl_languages|tojson }};
+        let translatedBlob = null;
+        let translatedFilename = '';
+
+        // Gestion du fichier
+        const fileInput = document.getElementById('file');
+        const fileLabel = document.getElementById('fileLabel');
+        const fileName = document.getElementById('fileName');
+
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files.length > 0) {
+                const file = e.target.files[0];
+                fileName.textContent = file.name;
+                fileLabel.classList.add('has-file');
+            } else {
+                fileName.textContent = '';
+                fileLabel.classList.remove('has-file');
+            }
+        });
+
+        // Validation des langues
+        const sourceLang = document.getElementById('source_lang');
+        const targetLang = document.getElementById('target_lang');
+
+        sourceLang.addEventListener('change', checkLanguages);
+        targetLang.addEventListener('change', checkLanguages);
+
+        function checkLanguages() {
+            if (sourceLang.value === targetLang.value) {
+                alert('Les langues source et cible doivent être différentes');
+            }
+        }
+
+        // Soumission du formulaire
+        const form = document.getElementById('translationForm');
+        const submitBtn = document.getElementById('submitBtn');
+        const progress = document.getElementById('progress');
+        const errorDiv = document.getElementById('error');
+        const errorText = document.getElementById('errorText');
+        const reportDiv = document.getElementById('report');
+        const downloadBtn = document.getElementById('downloadBtn');
+
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            // Reset
+            errorDiv.style.display = 'none';
+            reportDiv.style.display = 'none';
+            translatedBlob = null;
+
+            // Validation
+            if (sourceLang.value === targetLang.value) {
+                showError('Les langues source et cible doivent être différentes');
+                return;
+            }
+
+            const formData = new FormData(form);
+
+            // Afficher la progression
+            submitBtn.disabled = true;
+            progress.style.display = 'block';
+
+            try {
+                const response = await fetch('/translate', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.detail || 'Erreur lors de la traduction');
+                }
+
+                // Récupérer le rapport depuis les headers
+                const reportHeader = response.headers.get('X-Translation-Report');
+                const contentDisposition = response.headers.get('Content-Disposition');
+                
+                if (contentDisposition) {
+                    const matches = /filename="([^"]+)"/.exec(contentDisposition);
+                    if (matches) {
+                        translatedFilename = matches[1];
+                    }
+                }
+
+                // Récupérer le fichier
+                translatedBlob = await response.blob();
+
+                // Afficher le rapport
+                if (reportHeader) {
+                    const report = JSON.parse(reportHeader);
+                    displayReport(report);
+                }
+
+            } catch (error) {
+                showError(error.message);
+            } finally {
+                submitBtn.disabled = false;
+                progress.style.display = 'none';
+            }
+        });
+
+        function showError(message) {
+            errorText.textContent = message;
+            errorDiv.style.display = 'block';
+        }
+
+        function displayReport(report) {
+            document.getElementById('totalSegments').textContent = report.total_segments;
+            document.getElementById('translatedSegments').textContent = report.translated;
+            document.getElementById('failedSegments').textContent = report.failed;
+            document.getElementById('duration').textContent = report.duration_seconds.toFixed(1) + 's';
+
+            reportDiv.style.display = 'block';
+        }
+
+        // Téléchargement
+        downloadBtn.addEventListener('click', () => {
+            if (translatedBlob) {
+                const url = window.URL.createObjectURL(translatedBlob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = translatedFilename || 'translated.xml';
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                window.URL.revokeObjectURL(url);
+            }
+        });
+    </script>
+</body>
+</html>

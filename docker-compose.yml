@@ -1,0 +1,65 @@
+version: '3.8'
+
+services:
+  scenari-translator:
+    build: .
+    container_name: scenari-translator
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      # Configuration Ollama
+      - OLLAMA_BASE_URL=http://host.docker.internal:11434
+      - OLLAMA_MODEL=llama3.2:latest
+      - OLLAMA_TIMEOUT=120
+      - OLLAMA_MAX_RETRIES=3
+      
+      # Configuration upload
+      - MAX_UPLOAD_MB=50
+      - BATCH_SIZE=10
+      
+      # Proxy (si nécessaire)
+      - HTTP_PROXY=${HTTP_PROXY:-}
+      - HTTPS_PROXY=${HTTPS_PROXY:-}
+      - NO_PROXY=${NO_PROXY:-}
+      
+      # Logging
+      - LOG_LEVEL=INFO
+      - DEBUG=false
+    
+    # Accès à Ollama sur l'hôte
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    
+    # Healthcheck
+    healthcheck:
+      test: ["CMD", "python", "-c", "import requests; requests.get('http://localhost:8000/healthz', timeout=5)"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    
+    # Limites de ressources
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 2G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+    
+    # Logs structurés
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    
+    # Volume pour les logs (optionnel)
+    volumes:
+      - ./logs:/app/logs
+
+networks:
+  default:
+    name: scenari-translator-network
