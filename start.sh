@@ -46,12 +46,17 @@ if ! command -v docker &> /dev/null; then
     exit 1
 fi
 
-if ! command -v docker-compose &> /dev/null; then
+# Vérifier Docker Compose (v1 ou v2)
+if docker compose version &> /dev/null; then
+    DOCKER_COMPOSE="docker compose"
+    log_success "Docker Compose v2 détecté"
+elif command -v docker-compose &> /dev/null; then
+    DOCKER_COMPOSE="docker-compose"
+    log_success "Docker Compose v1 détecté"
+else
     log_error "Docker Compose n'est pas installé. Veuillez l'installer d'abord."
     exit 1
 fi
-
-log_success "Docker et Docker Compose sont installés"
 
 # Vérification d'Ollama
 log_info "Vérification d'Ollama..."
@@ -85,12 +90,12 @@ fi
 
 # Construction et démarrage
 log_info "Construction de l'image Docker..."
-docker-compose build
+$DOCKER_COMPOSE build
 
 log_success "Image construite avec succès"
 
 log_info "Démarrage de l'application..."
-docker-compose up -d
+$DOCKER_COMPOSE up -d
 
 log_success "Application démarrée"
 
@@ -117,9 +122,9 @@ log_info "Healthcheck   : ${BLUE}http://localhost:8000/healthz${NC}"
 log_info "Métriques     : ${BLUE}http://localhost:8000/metrics${NC}"
 echo
 log_info "Commandes utiles :"
-echo "  - Voir les logs : docker-compose logs -f"
-echo "  - Arrêter       : docker-compose down"
-echo "  - Redémarrer    : docker-compose restart"
-echo "  - État          : docker-compose ps"
+echo "  - Voir les logs : $DOCKER_COMPOSE logs -f"
+echo "  - Arrêter       : $DOCKER_COMPOSE down"
+echo "  - Redémarrer    : $DOCKER_COMPOSE restart"
+echo "  - État          : $DOCKER_COMPOSE ps"
 echo
 log_success "Bon usage ! 🚀"

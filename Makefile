@@ -1,7 +1,7 @@
 .PHONY: help build up down restart logs test clean install dev
 
-# Variables
-DOCKER_COMPOSE = docker-compose
+# Variables - Détection automatique de Docker Compose v1 ou v2
+DOCKER_COMPOSE := $(shell docker compose version > /dev/null 2>&1 && echo 'docker compose' || echo 'docker-compose')
 DOCKER_EXEC = $(DOCKER_COMPOSE) exec scenari-translator
 
 help: ## Afficher cette aide
