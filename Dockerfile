@@ -47,14 +47,15 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY app/ ./app/
 COPY static/ ./static/
 
-# Créer un utilisateur non-root
-RUN useradd -m -u 1000 appuser && \
-    chown -R appuser:appuser /app
-USER appuser
-
 # Copier le script de démarrage
 COPY entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
+
+# Créer un utilisateur non-root
+RUN useradd -m -u 1000 appuser && \
+    chown -R appuser:appuser /app && \
+    chown appuser:appuser /entrypoint.sh
+USER appuser
 
 # Exposer le port par défaut HTTPS
 EXPOSE 8443
