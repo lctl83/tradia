@@ -27,7 +27,7 @@ WORKDIR /app
 # Copier le fichier proxy (toujours créé par start.sh, peut être vide)
 COPY host-proxy.conf /tmp/
 
-# Dépendances système pour lxml avec détection automatique du proxy
+# Dépendances système pour lxml avec détection automatique du proxy + curl pour healthcheck
 RUN set -eux; \
     if [ -f /tmp/host-proxy.conf ] && [ -s /tmp/host-proxy.conf ]; then \
         cp /tmp/host-proxy.conf /etc/apt/apt.conf.d/01proxy; \
@@ -50,6 +50,7 @@ RUN set -eux; \
     apt-get install -y --no-install-recommends \
     libxml2-dev \
     libxslt1-dev \
+    curl \
     && rm -rf /var/lib/apt/lists/* && \
     rm -f /etc/apt/apt.conf.d/01proxy
 
@@ -85,9 +86,9 @@ ENV RUN_AS_USER=appuser
 # Exposer le port par défaut HTTP
 EXPOSE 8000
 
-# Healthcheck
+# Healthcheck avec curl au lieu de Python requests
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD python -c "import requests; requests.get('http://localhost:${UVICORN_PORT:-8000}/healthz', timeout=5)"
+    CMD curl -f http://localhost:${UVICORN_PORT:-8000}/healthz || exit 1
 
 # Démarrage
 CMD ["/entrypoint.sh"]

@@ -9,7 +9,6 @@ lxml==5.1.0
 
 # HTTP client
 httpx==0.26.0
-requests==2.31.0
 
 # Data validation
 pydantic==2.5.3
