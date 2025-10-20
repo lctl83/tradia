@@ -55,7 +55,11 @@ RUN chmod +x /entrypoint.sh
 RUN useradd -m -u 1000 appuser && \
     chown -R appuser:appuser /app && \
     chown appuser:appuser /entrypoint.sh
-USER appuser
+
+# L'utilisateur root est conservé pour permettre la copie des certificats
+# SSL montés en lecture seule avant de relancer le service sous un utilisateur
+# non privilégié.
+ENV RUN_AS_USER=appuser
 
 # Exposer le port par défaut HTTPS
 EXPOSE 8443
