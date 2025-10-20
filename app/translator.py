@@ -85,7 +85,7 @@ class OllamaTranslator:
     def check_health(self) -> bool:
         """
         Vérifie que Ollama est disponible.
-        
+
         Returns:
             True si Ollama répond
         """
@@ -95,6 +95,23 @@ class OllamaTranslator:
         except Exception as e:
             logger.error(f"Ollama health check failed: {e}")
             return False
+
+    def list_models(self) -> List[str]:
+        """Récupère la liste des modèles Ollama disponibles."""
+        try:
+            response = self.client.get(f"{self.base_url}/api/tags", timeout=10)
+            if response.status_code != 200:
+                logger.error(
+                    "Failed to list Ollama models: status %s", response.status_code
+                )
+                return []
+
+            data = response.json()
+            models = data.get("models", [])
+            return [model.get("name") for model in models if model.get("name")]
+        except Exception as exc:
+            logger.error(f"Error while listing Ollama models: {exc}")
+            return []
     
     def translate_text(
         self,
