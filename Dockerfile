@@ -24,13 +24,27 @@ ENV no_proxy=${NO_PROXY}
 # Répertoire de travail
 WORKDIR /app
 
-# Dépendances système pour lxml
+# Copier le fichier proxy (toujours créé par start.sh, peut être vide)
+COPY host-proxy.conf /tmp/
+
+# Dépendances système pour lxml avec détection automatique du proxy
 RUN set -eux; \
-    if [ -n "${HTTP_PROXY}" ]; then \
+    if [ -f /tmp/host-proxy.conf ] && [ -s /tmp/host-proxy.conf ]; then \
+        cp /tmp/host-proxy.conf /etc/apt/apt.conf.d/01proxy; \
+        echo "✓ Using host proxy configuration"; \
+        cat /etc/apt/apt.conf.d/01proxy; \
+        PROXY_URL=$(grep -oP 'http://[^\"]+' /tmp/host-proxy.conf | head -1); \
+        export HTTP_PROXY="$PROXY_URL"; \
+        export HTTPS_PROXY="$PROXY_URL"; \
+        export http_proxy="$PROXY_URL"; \
+        export https_proxy="$PROXY_URL"; \
+        echo "✓ Proxy configured for pip: $PROXY_URL"; \
+    elif [ -n "${HTTP_PROXY}" ]; then \
         echo "Acquire::http::Proxy \"${HTTP_PROXY}\";" >> /etc/apt/apt.conf.d/01proxy; \
-    fi; \
-    if [ -n "${HTTPS_PROXY}" ]; then \
         echo "Acquire::https::Proxy \"${HTTPS_PROXY}\";" >> /etc/apt/apt.conf.d/01proxy; \
+        echo "✓ Using proxy from environment variables"; \
+    else \
+        echo "⚠ No proxy configuration found, using direct connection"; \
     fi; \
     apt-get update && \
     apt-get install -y --no-install-recommends \
@@ -41,7 +55,17 @@ RUN set -eux; \
 
 # Copier les requirements et installer les dépendances
 COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+RUN set -eux; \
+    if [ -f /tmp/host-proxy.conf ] && [ -s /tmp/host-proxy.conf ]; then \
+        PROXY_URL=$(grep -oP 'http://[^\"]+' /tmp/host-proxy.conf | head -1); \
+        export HTTP_PROXY="$PROXY_URL"; \
+        export HTTPS_PROXY="$PROXY_URL"; \
+        export http_proxy="$PROXY_URL"; \
+        export https_proxy="$PROXY_URL"; \
+        echo "✓ Installing Python packages via proxy: $PROXY_URL"; \
+    fi; \
+    pip install --no-cache-dir -r requirements.txt && \
+    rm -f /tmp/host-proxy.conf
 
 # Copier l'application
 COPY app/ ./app/
