@@ -102,7 +102,7 @@ log_success "Application démarrée"
 # Attendre que l'application soit prête
 log_info "Attente du démarrage de l'application..."
 for i in {1..30}; do
-    if curl -s -f http://localhost:8000/healthz > /dev/null 2>&1; then
+    if curl -k -s -f https://localhost/healthz > /dev/null 2>&1; then
         log_success "Application prête !"
         break
     fi
@@ -117,9 +117,9 @@ echo -e "${GREEN}╔════════════════════
 echo -e "${GREEN}║          Déploiement réussi ! 🎉          ║${NC}"
 echo -e "${GREEN}╚═══════════════════════════════════════════╝${NC}"
 echo
-log_info "Interface web : ${BLUE}http://localhost:8000${NC}"
-log_info "Healthcheck   : ${BLUE}http://localhost:8000/healthz${NC}"
-log_info "Métriques     : ${BLUE}http://localhost:8000/metrics${NC}"
+log_info "Interface web : ${BLUE}https://localhost${NC}"
+log_info "Healthcheck   : ${BLUE}https://localhost/healthz${NC}"
+log_info "Métriques     : ${BLUE}https://localhost/metrics${NC}"
 echo
 log_info "Commandes utiles :"
 echo "  - Voir les logs : $DOCKER_COMPOSE logs -f"
