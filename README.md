@@ -56,12 +56,21 @@ docker-compose up -d --build
 # Vérifier les logs
 docker-compose logs -f
 
-# Tester le healthcheck
-curl http://localhost:8000/healthz
+# Tester le healthcheck (via Traefik)
+curl -k https://localhost/healthz
 ```
 
 5. **Accéder à l'application** :
-Ouvrir votre navigateur à : **http://localhost:8000**
+Ouvrir votre navigateur à : **https://localhost**
+
+Traefik gère la terminaison TLS sur le port 443 et redirige automatiquement le trafic HTTP (port 80) vers HTTPS.
+
+Les certificats TLS attendus par Traefik sont montés depuis l'hôte :
+
+- Dossier hôte : `/etc/ssl/itapprspia`
+- Fichiers requis : `itapprspia.cer` et `itapprspia.key`
+
+Ces fichiers sont exposés dans le conteneur Traefik sous `/etc/traefik/certs`, conformément au `docker-compose.yml`.
 
 ### Déploiement sur un serveur distant
 
@@ -142,7 +151,7 @@ Exemple : `document.fr-en.a3b5c7d9.xml`
 ### Healthcheck
 
 ```bash
-curl http://localhost:8000/healthz
+curl -k https://localhost/healthz
 ```
 
 Réponse :
@@ -157,7 +166,7 @@ Réponse :
 ### Métriques
 
 ```bash
-curl http://localhost:8000/metrics
+curl -k https://localhost/metrics
 ```
 
 Réponse :
@@ -358,7 +367,7 @@ Ce projet est développé pour un usage interne DSI.
 Pour toute question ou problème :
 1. Consulter cette documentation
 2. Vérifier les logs : `docker-compose logs`
-3. Tester le healthcheck : `curl http://localhost:8000/healthz`
+3. Tester le healthcheck : `curl -k https://localhost/healthz`
 4. Contacter l'équipe infrastructure DSI
 
 ## 🔄 Roadmap
