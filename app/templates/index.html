@@ -69,7 +69,7 @@
             font-size: 14px;
         }
 
-        select, input[type="text"] {
+        select, textarea {
             width: 100%;
             padding: 12px 16px;
             border: 2px solid #e0e0e0;
@@ -77,12 +77,100 @@
             font-size: 15px;
             transition: all 0.3s;
             background: white;
+            resize: vertical;
         }
 
-        select:focus, input[type="text"]:focus {
+        select:focus, textarea:focus {
             outline: none;
             border-color: #1976D2;
             box-shadow: 0 0 0 3px rgba(25, 118, 210, 0.1);
+        }
+
+        .tabs {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 20px;
+            border-bottom: 2px solid #f0f0f0;
+            padding-bottom: 12px;
+        }
+
+        .tab-button {
+            flex: 1;
+            padding: 12px;
+            border: none;
+            border-radius: 8px;
+            background: #f5f5f5;
+            cursor: pointer;
+            font-weight: 600;
+            color: #424242;
+            transition: all 0.3s;
+        }
+
+        .tab-button.active {
+            background: linear-gradient(135deg, rgba(25, 118, 210, 0.15), rgba(232, 93, 63, 0.15));
+            color: #1976D2;
+            box-shadow: 0 4px 12px rgba(25, 118, 210, 0.15);
+        }
+
+        .tab-content {
+            display: none;
+            animation: fade-in 0.3s ease;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .text-result {
+            margin-top: 20px;
+            background: #f5f5f5;
+            border-radius: 8px;
+            padding: 16px;
+            display: none;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .result-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-weight: 600;
+            color: #424242;
+        }
+
+        .copy-btn {
+            background: none;
+            border: none;
+            color: #1976D2;
+            cursor: pointer;
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .copy-btn:hover {
+            text-decoration: underline;
+        }
+
+        pre {
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            font-family: inherit;
+            color: #424242;
+            line-height: 1.5;
+        }
+
+        @keyframes fade-in {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
         }
 
         .language-grid {
@@ -264,6 +352,10 @@
                 grid-template-columns: 1fr;
             }
 
+            .tabs {
+                flex-direction: column;
+            }
+
             h1 {
                 font-size: 24px;
             }
@@ -300,24 +392,52 @@
             </div>
 
             <div class="form-group">
-                <label for="model">Modèle Ollama (optionnel)</label>
-                <input type="text" id="model" name="model" placeholder="{{ default_model }}" value="{{ default_model }}">
+                <label for="model">Modèle Ollama</label>
+                <select id="model" name="model">
+                    <option value="{{ default_model }}">{{ default_model }}</option>
+                </select>
             </div>
 
-            <div class="form-group">
-                <label>Fichier XML SCENARI (max {{ max_upload_mb }}MB)</label>
-                <div class="file-input-wrapper">
-                    <input type="file" id="file" name="file" accept=".xml,application/xml,text/xml" required>
-                    <label for="file" class="file-input-label" id="fileLabel">
-                        📄 Cliquez pour sélectionner un fichier XML
-                        <div class="file-name" id="fileName"></div>
-                    </label>
+            <div class="tabs" role="tablist">
+                <button type="button" class="tab-button active" data-tab="text" aria-selected="true">📝 Traduction de texte</button>
+                <button type="button" class="tab-button" data-tab="file" aria-selected="false">📄 Traduction de fichier</button>
+            </div>
+
+            <div id="textTab" class="tab-content active" role="tabpanel">
+                <div class="form-group">
+                    <label for="textInput">Texte à traduire</label>
+                    <textarea id="textInput" name="text" rows="6" placeholder="Entrez le texte à traduire..."></textarea>
+                </div>
+
+                <button type="submit" class="btn" id="textSubmitBtn">
+                    ⚡ Traduire le texte
+                </button>
+
+                <div class="text-result" id="textResult">
+                    <div class="result-header">
+                        <span>Traduction</span>
+                        <button type="button" class="copy-btn" id="copyTextBtn">📋 Copier</button>
+                    </div>
+                    <pre id="translatedTextOutput"></pre>
                 </div>
             </div>
 
-            <button type="submit" class="btn" id="submitBtn">
-                🚀 Traduire le fichier
-            </button>
+            <div id="fileTab" class="tab-content" role="tabpanel">
+                <div class="form-group">
+                    <label>Fichier XML SCENARI (max {{ max_upload_mb }}MB)</label>
+                    <div class="file-input-wrapper">
+                        <input type="file" id="file" name="file" accept=".xml,application/xml,text/xml">
+                        <label for="file" class="file-input-label" id="fileLabel">
+                            📄 Cliquez pour sélectionner un fichier XML
+                            <div class="file-name" id="fileName"></div>
+                        </label>
+                    </div>
+                </div>
+
+                <button type="submit" class="btn" id="fileSubmitBtn">
+                    🚀 Traduire le fichier
+                </button>
+            </div>
         </form>
 
         <div class="progress" id="progress">
@@ -359,14 +479,39 @@
 
     <script>
         const rtlLanguages = {{ rtl_languages|tojson }};
+        const fallbackModel = "{{ default_model }}";
         let translatedBlob = null;
         let translatedFilename = '';
+        let activeTab = 'text';
 
-        // Gestion du fichier
+        const form = document.getElementById('translationForm');
+        const sourceLang = document.getElementById('source_lang');
+        const targetLang = document.getElementById('target_lang');
+        const modelSelect = document.getElementById('model');
+
+        const tabButtons = document.querySelectorAll('.tab-button');
+        const textTab = document.getElementById('textTab');
+        const fileTab = document.getElementById('fileTab');
+        const textInput = document.getElementById('textInput');
+        const textResult = document.getElementById('textResult');
+        const translatedTextOutput = document.getElementById('translatedTextOutput');
+        const copyTextBtn = document.getElementById('copyTextBtn');
+
         const fileInput = document.getElementById('file');
         const fileLabel = document.getElementById('fileLabel');
         const fileName = document.getElementById('fileName');
 
+        const progress = document.getElementById('progress');
+        const errorDiv = document.getElementById('error');
+        const errorText = document.getElementById('errorText');
+        const reportDiv = document.getElementById('report');
+        const downloadBtn = document.getElementById('downloadBtn');
+        const submitButtons = {
+            text: document.getElementById('textSubmitBtn'),
+            file: document.getElementById('fileSubmitBtn'),
+        };
+
+        // Gestion du fichier
         fileInput.addEventListener('change', (e) => {
             if (e.target.files.length > 0) {
                 const file = e.target.files[0];
@@ -378,10 +523,43 @@
             }
         });
 
-        // Validation des langues
-        const sourceLang = document.getElementById('source_lang');
-        const targetLang = document.getElementById('target_lang');
+        function updateRequiredInputs() {
+            textInput.required = activeTab === 'text';
+            fileInput.required = activeTab === 'file';
+        }
 
+        function setActiveTab(tab) {
+            if (tab === activeTab) {
+                return;
+            }
+
+            activeTab = tab;
+
+            tabButtons.forEach((button) => {
+                const isActive = button.dataset.tab === tab;
+                button.classList.toggle('active', isActive);
+                button.setAttribute('aria-selected', isActive);
+            });
+
+            textTab.classList.toggle('active', tab === 'text');
+            fileTab.classList.toggle('active', tab === 'file');
+
+            resetTextResult();
+            reportDiv.style.display = 'none';
+            errorDiv.style.display = 'none';
+
+            updateRequiredInputs();
+        }
+
+        tabButtons.forEach((button) => {
+            button.addEventListener('click', () => {
+                setActiveTab(button.dataset.tab);
+            });
+        });
+
+        updateRequiredInputs();
+
+        // Validation des langues
         sourceLang.addEventListener('change', checkLanguages);
         targetLang.addEventListener('change', checkLanguages);
 
@@ -391,70 +569,111 @@
             }
         }
 
-        // Soumission du formulaire
-        const form = document.getElementById('translationForm');
-        const submitBtn = document.getElementById('submitBtn');
-        const progress = document.getElementById('progress');
-        const errorDiv = document.getElementById('error');
-        const errorText = document.getElementById('errorText');
-        const reportDiv = document.getElementById('report');
-        const downloadBtn = document.getElementById('downloadBtn');
+        function resetTextResult() {
+            translatedTextOutput.textContent = '';
+            textResult.style.display = 'none';
+        }
 
+        function displayTextTranslation(translatedText) {
+            translatedTextOutput.textContent = translatedText;
+            copyTextBtn.textContent = '📋 Copier';
+            textResult.style.display = 'flex';
+        }
+
+        // Soumission du formulaire
         form.addEventListener('submit', async (e) => {
             e.preventDefault();
 
-            // Reset
             errorDiv.style.display = 'none';
             reportDiv.style.display = 'none';
+            resetTextResult();
             translatedBlob = null;
 
-            // Validation
             if (sourceLang.value === targetLang.value) {
                 showError('Les langues source et cible doivent être différentes');
                 return;
             }
 
-            const formData = new FormData(form);
+            if (activeTab === 'text') {
+                if (!textInput.value.trim()) {
+                    showError('Le texte à traduire ne peut pas être vide');
+                    return;
+                }
+            } else if (!fileInput.files.length) {
+                showError('Veuillez sélectionner un fichier XML');
+                return;
+            }
 
-            // Afficher la progression
-            submitBtn.disabled = true;
+            const activeButton = submitButtons[activeTab];
+            activeButton.disabled = true;
             progress.style.display = 'block';
 
             try {
-                const response = await fetch('/translate', {
-                    method: 'POST',
-                    body: formData
-                });
+                if (activeTab === 'text') {
+                    const formData = new FormData();
+                    formData.append('text', textInput.value.trim());
+                    formData.append('source_lang', sourceLang.value);
+                    formData.append('target_lang', targetLang.value);
+                    if (modelSelect.value) {
+                        formData.append('model', modelSelect.value);
+                    }
 
-                if (!response.ok) {
-                    const error = await response.json();
-                    throw new Error(error.detail || 'Erreur lors de la traduction');
-                }
+                    const response = await fetch('/translate-text', {
+                        method: 'POST',
+                        body: formData,
+                    });
 
-                // Récupérer le rapport depuis les headers
-                const reportHeader = response.headers.get('X-Translation-Report');
-                const contentDisposition = response.headers.get('Content-Disposition');
-                
-                if (contentDisposition) {
-                    const matches = /filename="([^"]+)"/.exec(contentDisposition);
-                    if (matches) {
-                        translatedFilename = matches[1];
+                    if (!response.ok) {
+                        const error = await response.json().catch(() => ({}));
+                        throw new Error(error.detail || 'Erreur lors de la traduction du texte');
+                    }
+
+                    const data = await response.json();
+                    if (data.translated_text) {
+                        displayTextTranslation(data.translated_text);
+                    } else {
+                        throw new Error('Réponse inattendue du serveur');
+                    }
+                } else {
+                    const formData = new FormData();
+                    formData.append('file', fileInput.files[0]);
+                    formData.append('source_lang', sourceLang.value);
+                    formData.append('target_lang', targetLang.value);
+                    if (modelSelect.value) {
+                        formData.append('model', modelSelect.value);
+                    }
+
+                    const response = await fetch('/translate', {
+                        method: 'POST',
+                        body: formData,
+                    });
+
+                    if (!response.ok) {
+                        const error = await response.json().catch(() => ({}));
+                        throw new Error(error.detail || 'Erreur lors de la traduction');
+                    }
+
+                    const reportHeader = response.headers.get('X-Translation-Report');
+                    const contentDisposition = response.headers.get('Content-Disposition');
+
+                    if (contentDisposition) {
+                        const matches = /filename="([^"]+)"/.exec(contentDisposition);
+                        if (matches) {
+                            translatedFilename = matches[1];
+                        }
+                    }
+
+                    translatedBlob = await response.blob();
+
+                    if (reportHeader) {
+                        const report = JSON.parse(reportHeader);
+                        displayReport(report);
                     }
                 }
-
-                // Récupérer le fichier
-                translatedBlob = await response.blob();
-
-                // Afficher le rapport
-                if (reportHeader) {
-                    const report = JSON.parse(reportHeader);
-                    displayReport(report);
-                }
-
             } catch (error) {
                 showError(error.message);
             } finally {
-                submitBtn.disabled = false;
+                activeButton.disabled = false;
                 progress.style.display = 'none';
             }
         });
@@ -486,6 +705,59 @@
                 window.URL.revokeObjectURL(url);
             }
         });
+
+        copyTextBtn.addEventListener('click', async () => {
+            if (!translatedTextOutput.textContent) {
+                return;
+            }
+
+            try {
+                await navigator.clipboard.writeText(translatedTextOutput.textContent);
+                copyTextBtn.textContent = '✅ Copié !';
+                setTimeout(() => {
+                    copyTextBtn.textContent = '📋 Copier';
+                }, 1500);
+            } catch (err) {
+                console.warn('Impossible de copier le texte', err);
+            }
+        });
+
+        async function loadModels() {
+            try {
+                const response = await fetch('/models');
+                if (!response.ok) {
+                    throw new Error('HTTP error');
+                }
+
+                const data = await response.json();
+                const models = data.models || [];
+                const defaultModel = data.default_model || fallbackModel;
+
+                const uniqueModels = Array.from(new Set(models.concat(defaultModel)));
+
+                modelSelect.innerHTML = '';
+                uniqueModels.forEach((modelName) => {
+                    const option = document.createElement('option');
+                    option.value = modelName;
+                    option.textContent = modelName;
+                    if (modelName === defaultModel) {
+                        option.selected = true;
+                    }
+                    modelSelect.appendChild(option);
+                });
+            } catch (error) {
+                console.warn('Impossible de récupérer la liste des modèles Ollama', error);
+                if (!modelSelect.options.length) {
+                    const option = document.createElement('option');
+                    option.value = fallbackModel;
+                    option.textContent = fallbackModel;
+                    option.selected = true;
+                    modelSelect.appendChild(option);
+                }
+            }
+        }
+
+        loadModels();
     </script>
 </body>
 </html>

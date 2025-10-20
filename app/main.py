@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import Optional
 
 from fastapi import FastAPI, UploadFile, File, Form, HTTPException, Request
-from fastapi.responses import Response, HTMLResponse
+from fastapi.responses import Response, HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from fastapi.middleware.cors import CORSMiddleware
@@ -184,12 +184,14 @@ async def translate_file(
     # Lire le fichier
     try:
         content = await file.read()
-        
+
         if len(content) > settings.MAX_UPLOAD_BYTES:
             raise HTTPException(
                 413,
                 f"File too large. Max size: {settings.MAX_UPLOAD_MB}MB"
             )
+    except HTTPException:
+        raise
     except Exception as e:
         logger.log("ERROR", "Error reading file", request_id=request_id, error=str(e))
         raise HTTPException(500, f"Error reading file: {e}")
@@ -318,6 +320,60 @@ async def translate_file(
         media_type="application/xml",
         headers=headers,
     )
+
+
+@app.post("/translate-text")
+async def translate_text_endpoint(
+    text: str = Form(...),
+    source_lang: str = Form(...),
+    target_lang: str = Form(...),
+    model: Optional[str] = Form(None),
+):
+    """Traduit un texte brut via Ollama."""
+
+    if source_lang not in settings.SUPPORTED_LANGUAGES:
+        raise HTTPException(400, f"Unsupported source language: {source_lang}")
+
+    if target_lang not in settings.SUPPORTED_LANGUAGES:
+        raise HTTPException(400, f"Unsupported target language: {target_lang}")
+
+    if source_lang == target_lang:
+        raise HTTPException(400, "Source and target languages must be different")
+
+    if not text.strip():
+        raise HTTPException(400, "Text to translate cannot be empty")
+
+    translator = OllamaTranslator()
+
+    try:
+        translated_text = translator.translate_text(
+            text,
+            source_lang,
+            target_lang,
+            model,
+        )
+    finally:
+        translator.close()
+
+    if translated_text is None:
+        raise HTTPException(502, "Failed to translate text with Ollama")
+
+    return {"translated_text": translated_text}
+
+
+@app.get("/models", response_class=JSONResponse)
+async def list_models():
+    """Retourne la liste des modèles disponibles côté Ollama."""
+    translator = OllamaTranslator()
+    try:
+        models = translator.list_models()
+    finally:
+        translator.close()
+
+    if not models:
+        models = [settings.OLLAMA_MODEL]
+
+    return {"models": models, "default_model": settings.OLLAMA_MODEL}
 
 
 if __name__ == "__main__":
