@@ -1,21 +1,17 @@
-version: '3.8'
-
 services:
   scenari-translator:
     build: .
     container_name: scenari-translator
     restart: unless-stopped
     ports:
-      - "443:8443"
+      - "8000:8000"
     environment:
       # Configuration Ollama
       - OLLAMA_BASE_URL=http://host.docker.internal:11434
       - OLLAMA_MODEL=llama3.2:latest
       - OLLAMA_TIMEOUT=120
       - OLLAMA_MAX_RETRIES=3
-      - UVICORN_PORT=8443
-      - SSL_CERTFILE=/etc/ssl/itapprspia/itapprspia.cer
-      - SSL_KEYFILE=/etc/ssl/itapprspia/itapprspia.key
+      - UVICORN_PORT=8000
       
       # Configuration upload
       - MAX_UPLOAD_MB=50
@@ -36,7 +32,7 @@ services:
     
     # Healthcheck
     healthcheck:
-      test: ["CMD", "python", "-c", "import requests; requests.get('https://localhost:8443/healthz', timeout=5, verify=False)"]
+      test: ["CMD", "python", "-c", "import requests; requests.get('http://localhost:8000/healthz', timeout=5)"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -58,12 +54,29 @@ services:
       options:
         max-size: "10m"
         max-file: "3"
-    
+
     # Volume pour les logs (optionnel)
     volumes:
       - ./logs:/app/logs
-      - /etc/ssl/itapprspia:/etc/ssl/itapprspia:ro
+
+    networks:
+      - scenari-translator-network
+
+  scenari-proxy:
+    image: nginx:1.25-alpine
+    container_name: scenari-proxy
+    restart: unless-stopped
+    depends_on:
+      - scenari-translator
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/conf.d:/etc/nginx/conf.d:ro
+      - /etc/ssl/itapprspia:/etc/nginx/certs:ro
+    networks:
+      - scenari-translator-network
 
 networks:
-  default:
+  scenari-translator-network:
     name: scenari-translator-network

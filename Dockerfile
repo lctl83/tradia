@@ -56,17 +56,14 @@ RUN useradd -m -u 1000 appuser && \
     chown -R appuser:appuser /app && \
     chown appuser:appuser /entrypoint.sh
 
-# L'utilisateur root est conservé pour permettre la copie des certificats
-# SSL montés en lecture seule avant de relancer le service sous un utilisateur
-# non privilégié.
 ENV RUN_AS_USER=appuser
 
-# Exposer le port par défaut HTTPS
-EXPOSE 8443
+# Exposer le port par défaut HTTP
+EXPOSE 8000
 
 # Healthcheck
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD python -c "import requests; requests.get('https://localhost:${UVICORN_PORT:-8443}/healthz', timeout=5, verify=False)"
+    CMD python -c "import requests; requests.get('http://localhost:${UVICORN_PORT:-8000}/healthz', timeout=5)"
 
 # Démarrage
 CMD ["/entrypoint.sh"]
