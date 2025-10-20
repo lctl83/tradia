@@ -62,6 +62,28 @@ load_proxy_from_apt() {
     fi
 }
 
+# Détection automatique de la configuration proxy système
+log_info "Détection de la configuration proxy..."
+PROXY_FOUND=false
+
+for proxy_file in /etc/apt/apt.conf.d/90curtin-aptproxy \
+                  /etc/apt/apt.conf.d/proxy.conf \
+                  /etc/apt/apt.conf.d/*proxy*; do
+    if [ -f "$proxy_file" ] && [ -s "$proxy_file" ]; then
+        log_success "Configuration proxy trouvée : $proxy_file"
+        cp "$proxy_file" host-proxy.conf
+        PROXY_FOUND=true
+        echo "Contenu du fichier proxy :"
+        cat host-proxy.conf
+        break
+    fi
+done
+
+if [ "$PROXY_FOUND" = false ]; then
+    log_info "Aucune configuration proxy système détectée (connexion directe)"
+    : > host-proxy.conf
+fi
+
 load_proxy_from_apt
 
 # Banner
