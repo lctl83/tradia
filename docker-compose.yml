@@ -6,13 +6,16 @@ services:
     container_name: scenari-translator
     restart: unless-stopped
     ports:
-      - "8000:8000"
+      - "443:8443"
     environment:
       # Configuration Ollama
       - OLLAMA_BASE_URL=http://host.docker.internal:11434
       - OLLAMA_MODEL=llama3.2:latest
       - OLLAMA_TIMEOUT=120
       - OLLAMA_MAX_RETRIES=3
+      - UVICORN_PORT=8443
+      - SSL_CERTFILE=/etc/ssl/itapprspia/itapprspia.cer
+      - SSL_KEYFILE=/etc/ssl/itapprspia/itapprspia.key
       
       # Configuration upload
       - MAX_UPLOAD_MB=50
@@ -33,7 +36,7 @@ services:
     
     # Healthcheck
     healthcheck:
-      test: ["CMD", "python", "-c", "import requests; requests.get('http://localhost:8000/healthz', timeout=5)"]
+      test: ["CMD", "python", "-c", "import requests; requests.get('https://localhost:8443/healthz', timeout=5, verify=False)"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -59,6 +62,7 @@ services:
     # Volume pour les logs (optionnel)
     volumes:
       - ./logs:/app/logs
+      - /etc/ssl/itapprspia:/etc/ssl/itapprspia:ro
 
 networks:
   default:

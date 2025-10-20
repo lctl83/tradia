@@ -52,12 +52,16 @@ RUN useradd -m -u 1000 appuser && \
     chown -R appuser:appuser /app
 USER appuser
 
-# Exposer le port
-EXPOSE 8000
+# Copier le script de démarrage
+COPY entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
+
+# Exposer le port par défaut HTTPS
+EXPOSE 8443
 
 # Healthcheck
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD python -c "import requests; requests.get('http://localhost:8000/healthz', timeout=5)"
+    CMD python -c "import requests; requests.get('https://localhost:${UVICORN_PORT:-8443}/healthz', timeout=5, verify=False)"
 
 # Démarrage
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--proxy-headers", "--forwarded-allow-ips", "*"]
+CMD ["/entrypoint.sh"]
