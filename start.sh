@@ -29,6 +29,41 @@ log_error() {
     echo -e "${RED}✗ ${NC}$1"
 }
 
+# Chargement automatique des proxys depuis la configuration APT
+load_proxy_from_apt() {
+    local apt_proxy_conf="/etc/apt/apt.conf.d/90curtin-aptproxy"
+
+    if [ ! -f "${apt_proxy_conf}" ]; then
+        return
+    fi
+
+    local http_proxy_conf
+    http_proxy_conf=$(awk -F'"' '/Acquire::http::Proxy/ {print $2}' "${apt_proxy_conf}" | tail -n1)
+
+    local https_proxy_conf
+    https_proxy_conf=$(awk -F'"' '/Acquire::https::Proxy/ {print $2}' "${apt_proxy_conf}" | tail -n1)
+
+    if [ -z "${HTTP_PROXY:-}" ] && [ -n "${http_proxy_conf}" ] && [ "${http_proxy_conf}" != "DIRECT" ]; then
+        export HTTP_PROXY="${http_proxy_conf}"
+        export http_proxy="${http_proxy_conf}"
+        log_info "HTTP_PROXY détecté dans ${apt_proxy_conf}"
+    fi
+
+    if [ -z "${HTTPS_PROXY:-}" ]; then
+        if [ -n "${https_proxy_conf}" ] && [ "${https_proxy_conf}" != "DIRECT" ]; then
+            export HTTPS_PROXY="${https_proxy_conf}"
+            export https_proxy="${https_proxy_conf}"
+            log_info "HTTPS_PROXY détecté dans ${apt_proxy_conf}"
+        elif [ -n "${http_proxy_conf}" ] && [ "${http_proxy_conf}" != "DIRECT" ]; then
+            export HTTPS_PROXY="${http_proxy_conf}"
+            export https_proxy="${http_proxy_conf}"
+            log_info "HTTPS_PROXY non défini, utilisation de HTTP_PROXY"
+        fi
+    fi
+}
+
+load_proxy_from_apt
+
 # Banner
 echo -e "${BLUE}"
 cat << "EOF"
