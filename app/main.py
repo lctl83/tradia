@@ -370,28 +370,10 @@ async def list_models():
     finally:
         translator.close()
 
-    # Toujours faire apparaître le modèle par défaut en premier
-    unique_models = []
-    seen = set()
+    if not models:
+        models = [settings.OLLAMA_MODEL]
 
-    for name in models:
-        if name and name not in seen:
-            seen.add(name)
-            unique_models.append(name)
-
-    default_model = settings.OLLAMA_MODEL
-    if default_model:
-        if default_model in seen:
-            unique_models = [default_model] + [m for m in unique_models if m != default_model]
-        else:
-            unique_models.insert(0, default_model)
-    elif not unique_models:
-        unique_models = []
-
-    if not unique_models and default_model:
-        unique_models = [default_model]
-
-    return {"models": unique_models, "default_model": default_model}
+    return {"models": models, "default_model": settings.OLLAMA_MODEL}
 
 
 if __name__ == "__main__":

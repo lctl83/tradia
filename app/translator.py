@@ -108,17 +108,7 @@ class OllamaTranslator:
 
             data = response.json()
             models = data.get("models", [])
-
-            unique_models: List[str] = []
-            seen = set()
-
-            for model in models:
-                name = (model.get("name") or "").strip()
-                if name and name not in seen:
-                    seen.add(name)
-                    unique_models.append(name)
-
-            return unique_models
+            return [model.get("name") for model in models if model.get("name")]
         except Exception as exc:
             logger.error(f"Error while listing Ollama models: {exc}")
             return []

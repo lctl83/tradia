@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TradIA - DCI</title>
+    <title>SCENARI Translator - DCI</title>
     <link rel="icon" type="image/jpeg" href="/static/logo-dci.jpg">
     <style>
         * {
@@ -55,12 +55,6 @@
             color: #757575;
             margin-bottom: 0;
             font-size: 15px;
-        }
-
-        .data-notice {
-            margin-top: 12px;
-            color: #607D8B;
-            font-size: 13px;
         }
 
         .form-group {
@@ -372,9 +366,8 @@
     <div class="container">
         <div class="header">
             <img src="/static/logo-dci.jpg" alt="Logo DCI" class="logo">
-            <h1 id="headerTitle">🤖 TradIA</h1>
-            <p class="subtitle" id="headerSubtitle">Traduisez instantanément vos textes avec les modèles Ollama installés</p>
-            <p class="data-notice">🔒 Aucune donnée n'est conservée sur le serveur.</p>
+            <h1>🌍 SCENARI Translator</h1>
+            <p class="subtitle">Traduisez vos fichiers XML SCENARI via Ollama</p>
         </div>
 
         <form id="translationForm">
@@ -406,23 +399,23 @@
             </div>
 
             <div class="tabs" role="tablist">
-                <button type="button" class="tab-button active" data-tab="text" aria-selected="true">📝 TradIA — Traduction de texte</button>
-                <button type="button" class="tab-button" data-tab="file" aria-selected="false">📄 SCENARI Translator — Traduction XML</button>
+                <button type="button" class="tab-button active" data-tab="text" aria-selected="true">📝 Traduction de texte</button>
+                <button type="button" class="tab-button" data-tab="file" aria-selected="false">📄 Traduction de fichier</button>
             </div>
 
             <div id="textTab" class="tab-content active" role="tabpanel">
                 <div class="form-group">
-                    <label for="textInput">Texte à traduire avec TradIA</label>
+                    <label for="textInput">Texte à traduire</label>
                     <textarea id="textInput" name="text" rows="6" placeholder="Entrez le texte à traduire..."></textarea>
                 </div>
 
                 <button type="submit" class="btn" id="textSubmitBtn">
-                    ⚡ Traduire avec TradIA
+                    ⚡ Traduire le texte
                 </button>
 
                 <div class="text-result" id="textResult">
                     <div class="result-header">
-                        <span>Résultat TradIA</span>
+                        <span>Traduction</span>
                         <button type="button" class="copy-btn" id="copyTextBtn">📋 Copier</button>
                     </div>
                     <pre id="translatedTextOutput"></pre>
@@ -504,10 +497,6 @@
         const translatedTextOutput = document.getElementById('translatedTextOutput');
         const copyTextBtn = document.getElementById('copyTextBtn');
 
-        const headerTitle = document.getElementById('headerTitle');
-        const headerSubtitle = document.getElementById('headerSubtitle');
-        const dataNotice = document.querySelector('.data-notice');
-
         const fileInput = document.getElementById('file');
         const fileLabel = document.getElementById('fileLabel');
         const fileName = document.getElementById('fileName');
@@ -539,33 +528,6 @@
             fileInput.required = activeTab === 'file';
         }
 
-        const headerContent = {
-            text: {
-                title: '🤖 TradIA',
-                subtitle: 'Traduisez instantanément vos textes avec les modèles Ollama installés',
-            },
-            file: {
-                title: '🌍 SCENARI Translator',
-                subtitle: 'Traduisez vos fichiers XML SCENARI via Ollama',
-            },
-        };
-
-        function applyHeader(tab) {
-            const content = headerContent[tab] || headerContent.text;
-            if (headerTitle) {
-                headerTitle.textContent = content.title;
-            }
-            if (headerSubtitle) {
-                headerSubtitle.textContent = content.subtitle;
-            }
-            if (dataNotice) {
-                dataNotice.textContent = '🔒 Aucune donnée n\'est conservée sur le serveur.';
-            }
-
-            const plainTitle = content.title.replace(/^[^A-Za-zÀ-ÖØ-öø-ÿ]*\s*/, '');
-            document.title = `${plainTitle} - DCI`;
-        }
-
         function setActiveTab(tab) {
             if (tab === activeTab) {
                 return;
@@ -587,7 +549,6 @@
             errorDiv.style.display = 'none';
 
             updateRequiredInputs();
-            applyHeader(tab);
         }
 
         tabButtons.forEach((button) => {
@@ -597,7 +558,6 @@
         });
 
         updateRequiredInputs();
-        applyHeader(activeTab);
 
         // Validation des langues
         sourceLang.addEventListener('change', checkLanguages);
@@ -770,19 +730,10 @@
                 }
 
                 const data = await response.json();
-                const models = Array.isArray(data.models) ? data.models : [];
+                const models = data.models || [];
                 const defaultModel = data.default_model || fallbackModel;
 
-                let uniqueModels = Array.from(new Set(models.filter(Boolean)));
-                uniqueModels.sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' }));
-
-                if (defaultModel) {
-                    uniqueModels = [defaultModel, ...uniqueModels.filter((modelName) => modelName !== defaultModel)];
-                }
-
-                if (!uniqueModels.length && defaultModel) {
-                    uniqueModels = [defaultModel];
-                }
+                const uniqueModels = Array.from(new Set(models.concat(defaultModel)));
 
                 modelSelect.innerHTML = '';
                 uniqueModels.forEach((modelName) => {
