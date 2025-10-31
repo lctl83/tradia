@@ -5,7 +5,7 @@ DOCKER_COMPOSE := $(shell docker compose version > /dev/null 2>&1 && echo 'docke
 DOCKER_EXEC = $(DOCKER_COMPOSE) exec scenari-translator
 
 help: ## Afficher cette aide
-	@echo "SCENARI Translator - Commandes disponibles :"
+@echo "DCIA - Commandes disponibles :"
 	@echo ""
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-15s\033[0m %s\n", $$1, $$2}'
 

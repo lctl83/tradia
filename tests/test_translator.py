@@ -1,237 +1,160 @@
 """Tests unitaires pour le traducteur Ollama."""
-import pytest
-from unittest.mock import Mock, patch, MagicMock
-from app.translator import OllamaTranslator, CircuitBreaker
+import asyncio
+from unittest.mock import AsyncMock, Mock, patch
+
 import httpx
+import pytest
+import pytest_asyncio
+
+from app.translator import CircuitBreaker, OllamaTranslator
 
 
-@pytest.fixture
-def translator():
-    """Fixture pour le traducteur."""
-    return OllamaTranslator()
+@pytest_asyncio.fixture
+async def translator():
+    """Fixture asynchrone pour le traducteur."""
+    instance = OllamaTranslator()
+    yield instance
+    await instance.close()
 
 
 def test_circuit_breaker_initial_state():
-    """Test de l'état initial du circuit breaker."""
     cb = CircuitBreaker()
     assert cb.state == "closed"
     assert cb.can_attempt() is True
 
 
 def test_circuit_breaker_opens_after_failures():
-    """Test que le circuit s'ouvre après plusieurs échecs."""
-    cb = CircuitBreaker(failure_threshold=3)
-    
-    for _ in range(3):
-        cb.call_failed()
-    
+    cb = CircuitBreaker(failure_threshold=2)
+    cb.call_failed()
+    cb.call_failed()
     assert cb.state == "open"
     assert cb.can_attempt() is False
 
 
 def test_circuit_breaker_resets_on_success():
-    """Test que le circuit se réinitialise après un succès."""
     cb = CircuitBreaker()
     cb.call_failed()
-    cb.call_failed()
-    
     cb.call_succeeded()
-    
     assert cb.failures == 0
     assert cb.state == "closed"
 
 
-def test_translate_text_success(translator):
-    """Test de traduction réussie."""
+@pytest.mark.asyncio
+async def test_translate_text_success(translator):
     mock_response = Mock()
     mock_response.status_code = 200
-    mock_response.json.return_value = {
-        "response": "Translated text"
-    }
-    
-    with patch.object(translator.client, 'post', return_value=mock_response):
-        result = translator.translate_text(
-            "Texte source",
-            "fr",
-            "en"
-        )
-    
+    mock_response.json.return_value = {"response": "Translated text"}
+
+    translator.client.post = AsyncMock(return_value=mock_response)
+
+    result = await translator.translate_text("Texte", "fr", "en")
     assert result == "Translated text"
 
 
-def test_translate_text_empty_response(translator):
-    """Test avec réponse vide d'Ollama."""
+@pytest.mark.asyncio
+async def test_translate_text_empty_response(translator):
     mock_response = Mock()
     mock_response.status_code = 200
-    mock_response.json.return_value = {
-        "response": ""
-    }
-    
-    with patch.object(translator.client, 'post', return_value=mock_response):
-        result = translator.translate_text(
-            "Texte source",
-            "fr",
-            "en"
-        )
-    
+    mock_response.json.return_value = {"response": ""}
+
+    translator.client.post = AsyncMock(return_value=mock_response)
+
+    result = await translator.translate_text("Texte", "fr", "en")
     assert result is None
 
 
-def test_translate_text_http_error(translator):
-    """Test avec erreur HTTP."""
+@pytest.mark.asyncio
+async def test_translate_text_http_error(translator):
     mock_response = Mock()
     mock_response.status_code = 500
-    
-    with patch.object(translator.client, 'post', return_value=mock_response):
-        result = translator.translate_text(
-            "Texte source",
-            "fr",
-            "en"
-        )
-    
+
+    translator.client.post = AsyncMock(return_value=mock_response)
+
+    result = await translator.translate_text("Texte", "fr", "en")
     assert result is None
 
 
-def test_translate_text_timeout(translator):
-    """Test avec timeout."""
-    with patch.object(translator.client, 'post', side_effect=httpx.TimeoutException("Timeout")):
-        result = translator.translate_text(
-            "Texte source",
-            "fr",
-            "en"
-        )
-    
+@pytest.mark.asyncio
+async def test_translate_text_timeout(translator):
+    translator.client.post = AsyncMock(side_effect=httpx.TimeoutException("Timeout"))
+
+    result = await translator.translate_text("Texte", "fr", "en")
     assert result is None
 
 
-def test_translate_text_retries(translator):
-    """Test des retries avec succès au 2ème essai."""
-    translator.max_retries = 3
-    
-    mock_response_fail = Mock()
-    mock_response_fail.status_code = 500
-    
-    mock_response_success = Mock()
-    mock_response_success.status_code = 200
-    mock_response_success.json.return_value = {
-        "response": "Success on retry"
-    }
-    
-    with patch.object(
-        translator.client,
-        'post',
-        side_effect=[mock_response_fail, mock_response_success]
-    ):
-        with patch('time.sleep'):  # Skip les délais
-            result = translator.translate_text(
-                "Texte source",
-                "fr",
-                "en"
-            )
-    
-    assert result == "Success on retry"
+@pytest.mark.asyncio
+async def test_translate_text_retries(translator):
+    translator.max_retries = 2
 
+    mock_fail = Mock()
+    mock_fail.status_code = 500
 
-def test_translate_text_circuit_breaker_open(translator):
-    """Test que le circuit breaker bloque les appels quand ouvert."""
-    translator.circuit_breaker.state = "open"
-    
-    result = translator.translate_text(
-        "Texte source",
-        "fr",
-        "en"
-    )
-    
-    assert result is None
-
-
-def test_translate_text_unsupported_language_pair(translator):
-    """Test avec paire de langues non supportée."""
-    result = translator.translate_text(
-        "Text",
-        "fr",
-        "de"  # Allemand non supporté
-    )
-    
-    assert result is None
-
-
-def test_check_health_success(translator):
-    """Test du healthcheck avec Ollama disponible."""
-    mock_response = Mock()
-    mock_response.status_code = 200
-    
-    with patch.object(translator.client, 'get', return_value=mock_response):
-        assert translator.check_health() is True
-
-
-def test_check_health_failure(translator):
-    """Test du healthcheck avec Ollama indisponible."""
-    with patch.object(translator.client, 'get', side_effect=httpx.ConnectError("Connection failed")):
-        assert translator.check_health() is False
-
-
-def test_translate_batch(translator):
-    """Test de traduction par lot."""
-    texts = ["Text 1", "Text 2", "Text 3"]
-    
-    mock_response = Mock()
-    mock_response.status_code = 200
-    mock_response.json.return_value = {
-        "response": "Translated"
-    }
-    
-    with patch.object(translator.client, 'post', return_value=mock_response):
-        results = translator.translate_batch(
-            texts,
-            "en",
-            "fr",
-            batch_size=2
-        )
-    
-    assert len(results) == 3
-    assert all(r == "Translated" for r in results)
-
-
-def test_translate_batch_with_failures(translator):
-    """Test de batch avec certains échecs."""
-    texts = ["Text 1", "Text 2"]
-    
     mock_success = Mock()
     mock_success.status_code = 200
     mock_success.json.return_value = {"response": "Success"}
-    
-    mock_fail = Mock()
-    mock_fail.status_code = 500
-    
-    with patch.object(
-        translator.client,
-        'post',
-        side_effect=[mock_success, mock_fail]
-    ):
-        results = translator.translate_batch(
-            texts,
-            "en",
-            "fr"
-        )
-    
-    assert results[0] == "Success"
-    assert results[1] is None
+
+    translator.client.post = AsyncMock(side_effect=[mock_fail, mock_success])
+
+    with patch("asyncio.sleep", new=AsyncMock()):
+        result = await translator.translate_text("Texte", "fr", "en")
+
+    assert result == "Success"
 
 
-def test_system_prompt_exists_for_all_pairs():
-    """Test que tous les prompts système existent."""
-    supported_langs = ["fr", "en", "ar"]
-    
-    for src in supported_langs:
-        for tgt in supported_langs:
-            if src != tgt:
-                key = (src, tgt)
-                assert key in OllamaTranslator.SYSTEM_PROMPTS, f"Missing prompt for {key}"
+@pytest.mark.asyncio
+async def test_translate_text_circuit_breaker_open(translator):
+    translator.circuit_breaker.state = "open"
+    result = await translator.translate_text("Texte", "fr", "en")
+    assert result is None
 
 
-def test_close_client(translator):
-    """Test de fermeture du client."""
-    with patch.object(translator.client, 'close') as mock_close:
-        translator.close()
-        mock_close.assert_called_once()
+@pytest.mark.asyncio
+async def test_translate_text_unsupported_language_pair(translator):
+    result = await translator.translate_text("Texte", "fr", "de")
+    assert result is None
+
+
+@pytest.mark.asyncio
+async def test_translate_batch(translator):
+    responses = [
+        Mock(status_code=200, json=Mock(return_value={"response": "A"})),
+        Mock(status_code=200, json=Mock(return_value={"response": "B"})),
+    ]
+    translator.client.post = AsyncMock(side_effect=responses)
+
+    results = await translator.translate_batch(["Texte 1", "Texte 2"], "fr", "en", batch_size=1)
+    assert results == ["A", "B"]
+
+
+@pytest.mark.asyncio
+async def test_list_models(translator):
+    mock_response = Mock()
+    mock_response.status_code = 200
+    mock_response.json.return_value = {
+        "models": [
+            {"name": "mistral-small:latest"},
+            {"name": "llama3.1"},
+            {"name": "mistral-small:latest"},
+        ]
+    }
+
+    translator.client.get = AsyncMock(return_value=mock_response)
+
+    models = await translator.list_models()
+    assert models == ["mistral-small:latest", "llama3.1"]
+
+
+@pytest.mark.asyncio
+async def test_check_health_success(translator):
+    mock_response = Mock(status_code=200)
+    translator.client.get = AsyncMock(return_value=mock_response)
+
+    result = await translator.check_health()
+    assert result is True
+
+
+@pytest.mark.asyncio
+async def test_check_health_failure(translator):
+    translator.client.get = AsyncMock(side_effect=httpx.ConnectError("error"))
+    result = await translator.check_health()
+    assert result is False

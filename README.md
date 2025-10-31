@@ -1,11 +1,14 @@
-# SCENARI Translator
+# DCIA
 
-Application web pour traduire des fichiers XML SCENARI via Ollama avec support multilingue (FR, EN, AR).
+Suite d'assistants linguistiques internes DCI pour traduire, corriger, reformuler et résumer vos contenus grâce aux modèles Ollama.
 
 ## 🎯 Fonctionnalités
 
-- ✅ **Traduction XML SCENARI** : Préservation stricte de la structure, namespaces et attributs
-- ✅ **Support multilingue** : Français, Anglais, Arabe (avec RTL)
+- ✅ **Traduction instantanée** : Texte source à texte cible (FR/EN/AR) avec synchronisation des zones de saisie
+- ✅ **Correction orthographique** : Texte corrigé prêt à copier, avec explications des modifications
+- ✅ **Reformulation** : Reformulation professionnelle avec points clés mis en évidence
+- ✅ **Compte rendu** : Génération de résumés de réunion structurés (résumé, décisions, actions)
+- ✅ **Support multilingue** : Français, Anglais, Arabe (avec gestion RTL)
 - ✅ **Interface web moderne** : Simple, responsive et intuitive
 - ✅ **Robustesse** : Retries exponentiels, circuit-breaker, timeouts
 - ✅ **Observabilité** : Logs structurés JSON, métriques, healthcheck
@@ -16,7 +19,7 @@ Application web pour traduire des fichiers XML SCENARI via Ollama avec support m
 
 - Docker et Docker Compose
 - Ollama installé et accessible (par défaut sur `http://localhost:11434`)
-- Un modèle Ollama installé (ex: `llama3.2:latest`)
+- Un modèle Ollama installé (ex: `mistral-small:latest`)
 
 ### Vérification d'Ollama
 
@@ -28,7 +31,7 @@ curl http://localhost:11434/api/tags
 curl -fsSL https://ollama.com/install.sh | sh
 
 # Télécharger un modèle
-ollama pull llama3.2:latest
+ollama pull mistral-small:latest
 ```
 
 ## 🚀 Installation et déploiement
@@ -105,7 +108,7 @@ NO_PROXY=localhost,127.0.0.1
 | Variable | Défaut | Description |
 |----------|--------|-------------|
 | `OLLAMA_BASE_URL` | `http://localhost:11434` | URL du service Ollama |
-| `OLLAMA_MODEL` | `llama3.2:latest` | Modèle par défaut |
+| `OLLAMA_MODEL` | `mistral-small:latest` | Modèle par défaut |
 | `OLLAMA_TIMEOUT` | `120` | Timeout en secondes |
 | `OLLAMA_MAX_RETRIES` | `3` | Nombre de retries |
 | `MAX_UPLOAD_MB` | `50` | Taille max fichier (MB) |
@@ -130,21 +133,16 @@ OLLAMA_MODEL=mistral
 
 ### Via l'interface web
 
-1. Sélectionner la **langue source** (FR/EN/AR)
-2. Sélectionner la **langue cible** (FR/EN/AR)
-3. Choisir le **modèle Ollama** (optionnel)
-4. **Téléverser le fichier XML** SCENARI
-5. Cliquer sur **"Traduire le fichier"**
-6. **Télécharger le résultat** une fois la traduction terminée
+1. Choisir le **modèle Ollama** (Mistral Small par défaut).
+2. Sélectionner l'onglet correspondant à votre besoin :
+   - 📝 Traduction : choisissez les langues source/cible puis collez votre texte.
+   - ✅ Correction : collez votre texte pour obtenir la version corrigée et les explications.
+   - ♻️ Reformulation : collez votre texte pour une reformulation professionnelle.
+   - 🗂️ Compte rendu : collez vos notes de réunion pour générer un résumé structuré.
+3. Cliquez sur le bouton de l'onglet pour lancer l'analyse.
+4. Copiez le résultat ou téléchargez les éléments utiles (résumé, décisions, actions).
 
-### Format de sortie
-
-Les fichiers traduits suivent ce format de nom :
-```
-{nom_original}.{source}-{cible}.{hash}.xml
-```
-
-Exemple : `document.fr-en.a3b5c7d9.xml`
+Les zones de texte de la traduction sont synchronisées pour faciliter la comparaison entre l'original et le résultat.
 
 ## 🔍 Observabilité
 

@@ -5,7 +5,7 @@
 
 set -e
 
-echo "🔧 Mode développement - SCENARI Translator"
+echo "🔧 Mode développement - DCIA"
 echo "=========================================="
 echo
 

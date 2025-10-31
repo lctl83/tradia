@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TradIA - DCI</title>
+    <title>DCIA - DCI</title>
     <link rel="icon" type="image/jpeg" href="/static/logo-dci.jpg">
     <style>
         * {
@@ -26,7 +26,7 @@
             background: white;
             border-radius: 20px;
             box-shadow: 0 24px 48px rgba(15, 23, 42, 0.18);
-            max-width: 750px;
+            max-width: 960px;
             width: 100%;
             padding: 40px;
         }
@@ -47,14 +47,14 @@
         h1 {
             color: #424242;
             margin-bottom: 10px;
-            font-size: 28px;
+            font-size: 30px;
             font-weight: 600;
         }
 
         .subtitle {
-            color: #757575;
+            color: #555;
             margin-bottom: 0;
-            font-size: 15px;
+            font-size: 16px;
         }
 
         .data-notice {
@@ -71,7 +71,7 @@
             display: block;
             margin-bottom: 8px;
             color: #424242;
-            font-weight: 500;
+            font-weight: 600;
             font-size: 14px;
         }
 
@@ -86,6 +86,16 @@
             resize: vertical;
         }
 
+        textarea[readonly] {
+            background: #f9fafc;
+            cursor: default;
+        }
+
+        .rtl-support {
+            direction: rtl;
+            text-align: right;
+        }
+
         select:focus, textarea:focus {
             outline: none;
             border-color: #1976D2;
@@ -98,10 +108,12 @@
             margin-bottom: 20px;
             border-bottom: 2px solid #f0f0f0;
             padding-bottom: 12px;
+            flex-wrap: wrap;
         }
 
         .tab-button {
             flex: 1;
+            min-width: 180px;
             padding: 12px;
             border: none;
             border-radius: 8px;
@@ -127,22 +139,29 @@
             display: block;
         }
 
-        .text-result {
-            margin-top: 20px;
-            background: #f5f5f5;
-            border-radius: 8px;
-            padding: 16px;
-            display: none;
+        .dual-panel {
+            display: flex;
+            gap: 20px;
+            align-items: stretch;
+            margin-bottom: 20px;
+        }
+
+        .panel {
+            flex: 1;
+            display: flex;
             flex-direction: column;
             gap: 12px;
         }
 
-        .result-header {
+        .panel textarea {
+            min-height: 260px;
+            flex: 1;
+        }
+
+        .panel-header {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            font-weight: 600;
-            color: #424242;
         }
 
         .copy-btn {
@@ -158,70 +177,6 @@
 
         .copy-btn:hover {
             text-decoration: underline;
-        }
-
-        pre {
-            white-space: pre-wrap;
-            word-wrap: break-word;
-            font-family: inherit;
-            color: #424242;
-            line-height: 1.5;
-        }
-
-        @keyframes fade-in {
-            from {
-                opacity: 0;
-                transform: translateY(10px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-
-        .language-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 16px;
-        }
-
-        .file-input-wrapper {
-            position: relative;
-            overflow: hidden;
-            display: inline-block;
-            width: 100%;
-        }
-
-        .file-input-wrapper input[type="file"] {
-            position: absolute;
-            left: -9999px;
-        }
-
-        .file-input-label {
-            display: block;
-            padding: 16px;
-            background: #f5f5f5;
-            border: 2px dashed #ccc;
-            border-radius: 8px;
-            text-align: center;
-            cursor: pointer;
-            transition: all 0.3s;
-        }
-
-        .file-input-label:hover {
-            background: #ebebeb;
-            border-color: #2563EB;
-        }
-
-        .file-input-label.has-file {
-            background: #E8F5E9;
-            border-color: #4CAF50;
-        }
-
-        .file-name {
-            margin-top: 8px;
-            font-size: 13px;
-            color: #757575;
         }
 
         .btn {
@@ -280,56 +235,6 @@
             color: #757575;
         }
 
-        .report {
-            margin-top: 30px;
-            padding: 20px;
-            background: #f5f5f5;
-            border-radius: 8px;
-            display: none;
-        }
-
-        .report h3 {
-            color: #424242;
-            margin-bottom: 16px;
-            font-size: 18px;
-        }
-
-        .report-stats {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
-            gap: 12px;
-            margin-bottom: 16px;
-        }
-
-        .stat {
-            background: white;
-            padding: 12px;
-            border-radius: 6px;
-            text-align: center;
-        }
-
-        .stat-value {
-            font-size: 24px;
-            font-weight: bold;
-            color: #1976D2;
-        }
-
-        .stat-label {
-            font-size: 12px;
-            color: #757575;
-            margin-top: 4px;
-        }
-
-        .download-btn {
-            margin-top: 16px;
-            background: linear-gradient(135deg, #4CAF50 0%, #2E7D32 100%);
-            box-shadow: 0 4px 12px rgba(76, 175, 80, 0.3);
-        }
-
-        .download-btn:hover {
-            box-shadow: 0 8px 20px rgba(76, 175, 80, 0.4);
-        }
-
         .error {
             margin-top: 20px;
             padding: 16px;
@@ -344,9 +249,82 @@
             font-size: 14px;
         }
 
-        .rtl-support {
-            direction: rtl;
-            text-align: right;
+        .explanations {
+            background: #f5f5f5;
+            border-radius: 8px;
+            padding: 16px;
+            margin-bottom: 20px;
+            display: none;
+        }
+
+        .explanations h3 {
+            font-size: 16px;
+            color: #374151;
+            margin-bottom: 12px;
+        }
+
+        .explanations ul {
+            list-style: disc;
+            padding-left: 20px;
+            color: #424242;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .summary-sections {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+        }
+
+        .summary-section {
+            background: #f5f5f5;
+            border-radius: 8px;
+            padding: 16px;
+        }
+
+        .summary-section h4 {
+            font-size: 15px;
+            color: #1d4ed8;
+            margin-bottom: 10px;
+        }
+
+        .summary-section ul {
+            list-style: disc;
+            padding-left: 18px;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            color: #424242;
+        }
+
+        @keyframes fade-in {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .language-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+
+        @media (max-width: 900px) {
+            .dual-panel {
+                flex-direction: column;
+            }
+
+            .panel textarea {
+                min-height: 200px;
+            }
         }
 
         @media (max-width: 600px) {
@@ -363,7 +341,7 @@
             }
 
             h1 {
-                font-size: 24px;
+                font-size: 26px;
             }
         }
     </style>
@@ -372,13 +350,13 @@
     <div class="container">
         <div class="header">
             <img src="/static/logo-dci.jpg" alt="Logo DCI" class="logo">
-            <h1 id="headerTitle">🤖 TradIA</h1>
-            <p class="subtitle" id="headerSubtitle">Traduisez instantanément vos textes avec les modèles Ollama installés</p>
-            <p class="data-notice">🔒 Aucune donnée n'est conservée sur le serveur.</p>
+            <h1 id="headerTitle">🤖 DCIA</h1>
+            <p class="subtitle" id="headerSubtitle">Traduisez, reformulez et corrigez vos textes avec une IA interne DCI</p>
+            <p class="data-notice">🔒 Aucune donnée n'est envoyée à l'extérieur ni sur le serveur.</p>
         </div>
 
-        <form id="translationForm">
-            <div class="language-grid">
+        <form id="assistantForm">
+            <div class="language-grid" id="languageSelectors">
                 <div class="form-group">
                     <label for="source_lang">Langue source</label>
                     <select id="source_lang" name="source_lang" required>
@@ -406,44 +384,96 @@
             </div>
 
             <div class="tabs" role="tablist">
-                <button type="button" class="tab-button active" data-tab="text" aria-selected="true">📝 TradIA — Traduction de texte</button>
-                <button type="button" class="tab-button" data-tab="file" aria-selected="false">📄 SCENARI Translator — Traduction XML</button>
+                <button type="button" class="tab-button active" data-tab="translation" aria-selected="true">📝 Traduction</button>
+                <button type="button" class="tab-button" data-tab="correction" aria-selected="false">✅ Correction orthographique</button>
+                <button type="button" class="tab-button" data-tab="reformulation" aria-selected="false">♻️ Reformulation</button>
+                <button type="button" class="tab-button" data-tab="summary" aria-selected="false">🗂️ Compte rendu</button>
             </div>
 
-            <div id="textTab" class="tab-content active" role="tabpanel">
-                <div class="form-group">
-                    <label for="textInput">Texte à traduire avec TradIA</label>
-                    <textarea id="textInput" name="text" rows="6" placeholder="Entrez le texte à traduire..."></textarea>
-                </div>
-
-                <button type="submit" class="btn" id="textSubmitBtn">
-                    ⚡ Traduire avec TradIA
-                </button>
-
-                <div class="text-result" id="textResult">
-                    <div class="result-header">
-                        <span>Résultat TradIA</span>
-                        <button type="button" class="copy-btn" id="copyTextBtn">📋 Copier</button>
+            <div id="translationTab" class="tab-content active" role="tabpanel">
+                <div class="dual-panel">
+                    <div class="panel">
+                        <label for="textInput">Texte à traduire avec DCIA</label>
+                        <textarea id="textInput" name="text" rows="10" placeholder="Entrez le texte à traduire..."></textarea>
                     </div>
-                    <pre id="translatedTextOutput"></pre>
+                    <div class="panel">
+                        <div class="panel-header">
+                            <label for="translatedTextOutput">Résultat DCIA</label>
+                            <button type="button" class="copy-btn" id="copyTranslationBtn">📋 Copier</button>
+                        </div>
+                        <textarea id="translatedTextOutput" rows="10" readonly></textarea>
+                    </div>
                 </div>
+                <button type="submit" class="btn" id="translateSubmitBtn">⚡ Traduire avec DCIA</button>
             </div>
 
-            <div id="fileTab" class="tab-content" role="tabpanel">
-                <div class="form-group">
-                    <label>Fichier XML SCENARI (max {{ max_upload_mb }}MB)</label>
-                    <div class="file-input-wrapper">
-                        <input type="file" id="file" name="file" accept=".xml,application/xml,text/xml">
-                        <label for="file" class="file-input-label" id="fileLabel">
-                            📄 Cliquez pour sélectionner un fichier XML
-                            <div class="file-name" id="fileName"></div>
-                        </label>
+            <div id="correctionTab" class="tab-content" role="tabpanel">
+                <div class="dual-panel">
+                    <div class="panel">
+                        <label for="correctionInput">Texte à corriger</label>
+                        <textarea id="correctionInput" rows="10" placeholder="Collez votre texte à corriger..."></textarea>
+                    </div>
+                    <div class="panel">
+                        <div class="panel-header">
+                            <label for="correctionOutput">Texte corrigé</label>
+                            <button type="button" class="copy-btn" id="copyCorrectionBtn">📋 Copier</button>
+                        </div>
+                        <textarea id="correctionOutput" rows="10" readonly></textarea>
                     </div>
                 </div>
+                <div class="explanations" id="correctionExplanations">
+                    <h3>Explications des corrections</h3>
+                    <ul id="correctionExplanationList"></ul>
+                </div>
+                <button type="submit" class="btn" id="correctionSubmitBtn">✅ Corriger avec DCIA</button>
+            </div>
 
-                <button type="submit" class="btn" id="fileSubmitBtn">
-                    🚀 Traduire le fichier
-                </button>
+            <div id="reformulationTab" class="tab-content" role="tabpanel">
+                <div class="dual-panel">
+                    <div class="panel">
+                        <label for="reformulationInput">Texte à reformuler</label>
+                        <textarea id="reformulationInput" rows="10" placeholder="Collez votre texte à reformuler..."></textarea>
+                    </div>
+                    <div class="panel">
+                        <div class="panel-header">
+                            <label for="reformulationOutput">Texte reformulé</label>
+                            <button type="button" class="copy-btn" id="copyReformulationBtn">📋 Copier</button>
+                        </div>
+                        <textarea id="reformulationOutput" rows="10" readonly></textarea>
+                    </div>
+                </div>
+                <div class="explanations" id="reformulationHighlights">
+                    <h3>Mise en avant des modifications</h3>
+                    <ul id="reformulationHighlightList"></ul>
+                </div>
+                <button type="submit" class="btn" id="reformulationSubmitBtn">♻️ Reformuler avec DCIA</button>
+            </div>
+
+            <div id="summaryTab" class="tab-content" role="tabpanel">
+                <div class="dual-panel">
+                    <div class="panel">
+                        <label for="summaryInput">Notes de réunion</label>
+                        <textarea id="summaryInput" rows="10" placeholder="Collez vos notes de réunion..."></textarea>
+                    </div>
+                    <div class="panel">
+                        <div class="panel-header">
+                            <label for="summaryOutput">Compte rendu généré</label>
+                            <button type="button" class="copy-btn" id="copySummaryBtn">📋 Copier</button>
+                        </div>
+                        <textarea id="summaryOutput" rows="10" readonly></textarea>
+                    </div>
+                </div>
+                <div class="summary-sections">
+                    <div class="summary-section">
+                        <h4>Décisions</h4>
+                        <ul id="summaryDecisions"></ul>
+                    </div>
+                    <div class="summary-section">
+                        <h4>Actions à mener</h4>
+                        <ul id="summaryActions"></ul>
+                    </div>
+                </div>
+                <button type="submit" class="btn" id="summarySubmitBtn">🗂️ Générer le compte rendu</button>
             </div>
         </form>
 
@@ -451,264 +481,256 @@
             <div class="progress-bar">
                 <div class="progress-bar-fill"></div>
             </div>
-            <div class="progress-text">Traduction en cours...</div>
+            <div class="progress-text" id="progressText">Traitement en cours...</div>
         </div>
 
         <div class="error" id="error">
             <div class="error-text" id="errorText"></div>
-        </div>
-
-        <div class="report" id="report">
-            <h3>📊 Rapport de traduction</h3>
-            <div class="report-stats">
-                <div class="stat">
-                    <div class="stat-value" id="totalSegments">0</div>
-                    <div class="stat-label">Segments totaux</div>
-                </div>
-                <div class="stat">
-                    <div class="stat-value" id="translatedSegments">0</div>
-                    <div class="stat-label">Traduits</div>
-                </div>
-                <div class="stat">
-                    <div class="stat-value" id="failedSegments">0</div>
-                    <div class="stat-label">Échecs</div>
-                </div>
-                <div class="stat">
-                    <div class="stat-value" id="duration">0s</div>
-                    <div class="stat-label">Durée</div>
-                </div>
-            </div>
-            <button class="btn download-btn" id="downloadBtn">
-                💾 Télécharger le fichier traduit
-            </button>
         </div>
     </div>
 
     <script>
         const rtlLanguages = {{ rtl_languages|tojson }};
         const fallbackModel = "{{ default_model }}";
-        let translatedBlob = null;
-        let translatedFilename = '';
-        let activeTab = 'text';
+        let activeTab = 'translation';
 
-        const form = document.getElementById('translationForm');
+        const form = document.getElementById('assistantForm');
         const sourceLang = document.getElementById('source_lang');
         const targetLang = document.getElementById('target_lang');
         const modelSelect = document.getElementById('model');
+        const languageSelectors = document.getElementById('languageSelectors');
 
         const tabButtons = document.querySelectorAll('.tab-button');
-        const textTab = document.getElementById('textTab');
-        const fileTab = document.getElementById('fileTab');
-        const textInput = document.getElementById('textInput');
-        const textResult = document.getElementById('textResult');
-        const translatedTextOutput = document.getElementById('translatedTextOutput');
-        const copyTextBtn = document.getElementById('copyTextBtn');
+        const tabContents = {
+            translation: document.getElementById('translationTab'),
+            correction: document.getElementById('correctionTab'),
+            reformulation: document.getElementById('reformulationTab'),
+            summary: document.getElementById('summaryTab'),
+        };
 
-        const headerTitle = document.getElementById('headerTitle');
-        const headerSubtitle = document.getElementById('headerSubtitle');
-        const dataNotice = document.querySelector('.data-notice');
+        const translationInput = document.getElementById('textInput');
+        const translationOutput = document.getElementById('translatedTextOutput');
+        const copyTranslationBtn = document.getElementById('copyTranslationBtn');
 
-        const fileInput = document.getElementById('file');
-        const fileLabel = document.getElementById('fileLabel');
-        const fileName = document.getElementById('fileName');
+        const correctionInput = document.getElementById('correctionInput');
+        const correctionOutput = document.getElementById('correctionOutput');
+        const correctionExplanations = document.getElementById('correctionExplanations');
+        const correctionExplanationList = document.getElementById('correctionExplanationList');
+        const copyCorrectionBtn = document.getElementById('copyCorrectionBtn');
+
+        const reformulationInput = document.getElementById('reformulationInput');
+        const reformulationOutput = document.getElementById('reformulationOutput');
+        const reformulationHighlights = document.getElementById('reformulationHighlights');
+        const reformulationHighlightList = document.getElementById('reformulationHighlightList');
+        const copyReformulationBtn = document.getElementById('copyReformulationBtn');
+
+        const summaryInput = document.getElementById('summaryInput');
+        const summaryOutput = document.getElementById('summaryOutput');
+        const summaryDecisions = document.getElementById('summaryDecisions');
+        const summaryActions = document.getElementById('summaryActions');
+        const copySummaryBtn = document.getElementById('copySummaryBtn');
+
+        const rtlLanguageSet = new Set(Array.isArray(rtlLanguages) ? rtlLanguages : []);
+
+        const submitButtons = {
+            translation: document.getElementById('translateSubmitBtn'),
+            correction: document.getElementById('correctionSubmitBtn'),
+            reformulation: document.getElementById('reformulationSubmitBtn'),
+            summary: document.getElementById('summarySubmitBtn'),
+        };
 
         const progress = document.getElementById('progress');
+        const progressText = document.getElementById('progressText');
         const errorDiv = document.getElementById('error');
         const errorText = document.getElementById('errorText');
-        const reportDiv = document.getElementById('report');
-        const downloadBtn = document.getElementById('downloadBtn');
-        const submitButtons = {
-            text: document.getElementById('textSubmitBtn'),
-            file: document.getElementById('fileSubmitBtn'),
+
+        const progressMessages = {
+            translation: 'Traduction en cours...',
+            correction: 'Correction en cours...',
+            reformulation: 'Reformulation en cours...',
+            summary: 'Génération du compte rendu...',
         };
-
-        // Gestion du fichier
-        fileInput.addEventListener('change', (e) => {
-            if (e.target.files.length > 0) {
-                const file = e.target.files[0];
-                fileName.textContent = file.name;
-                fileLabel.classList.add('has-file');
-            } else {
-                fileName.textContent = '';
-                fileLabel.classList.remove('has-file');
-            }
-        });
-
-        function updateRequiredInputs() {
-            textInput.required = activeTab === 'text';
-            fileInput.required = activeTab === 'file';
-        }
-
-        const headerContent = {
-            text: {
-                title: '🤖 TradIA',
-                subtitle: 'Traduisez instantanément vos textes avec les modèles Ollama installés',
-            },
-            file: {
-                title: '🌍 SCENARI Translator',
-                subtitle: 'Traduisez vos fichiers XML SCENARI via Ollama',
-            },
-        };
-
-        function applyHeader(tab) {
-            const content = headerContent[tab] || headerContent.text;
-            if (headerTitle) {
-                headerTitle.textContent = content.title;
-            }
-            if (headerSubtitle) {
-                headerSubtitle.textContent = content.subtitle;
-            }
-            if (dataNotice) {
-                dataNotice.textContent = '🔒 Aucune donnée n\'est conservée sur le serveur.';
-            }
-
-            const plainTitle = content.title.replace(/^[^A-Za-zÀ-ÖØ-öø-ÿ]*\s*/, '');
-            document.title = `${plainTitle} - DCI`;
-        }
-
-        function setActiveTab(tab) {
-            if (tab === activeTab) {
-                return;
-            }
-
-            activeTab = tab;
-
-            tabButtons.forEach((button) => {
-                const isActive = button.dataset.tab === tab;
-                button.classList.toggle('active', isActive);
-                button.setAttribute('aria-selected', isActive);
-            });
-
-            textTab.classList.toggle('active', tab === 'text');
-            fileTab.classList.toggle('active', tab === 'file');
-
-            resetTextResult();
-            reportDiv.style.display = 'none';
-            errorDiv.style.display = 'none';
-
-            updateRequiredInputs();
-            applyHeader(tab);
-        }
 
         tabButtons.forEach((button) => {
             button.addEventListener('click', () => {
-                setActiveTab(button.dataset.tab);
+                const tab = button.dataset.tab;
+                if (tab === activeTab) {
+                    return;
+                }
+
+                activeTab = tab;
+
+                tabButtons.forEach((btn) => {
+                    btn.classList.toggle('active', btn.dataset.tab === tab);
+                    btn.setAttribute('aria-selected', btn.dataset.tab === tab ? 'true' : 'false');
+                });
+
+                Object.entries(tabContents).forEach(([key, content]) => {
+                    content.classList.toggle('active', key === tab);
+                });
+
+                errorDiv.style.display = 'none';
+                progress.style.display = 'none';
+
+                const requiresLanguages = tab === 'translation';
+                languageSelectors.style.display = requiresLanguages ? 'grid' : 'none';
             });
         });
 
-        updateRequiredInputs();
-        applyHeader(activeTab);
+        function renderList(container, items) {
+            container.innerHTML = '';
+            if (!items || !items.length) {
+                return;
+            }
 
-        // Validation des langues
-        sourceLang.addEventListener('change', checkLanguages);
-        targetLang.addEventListener('change', checkLanguages);
+            const fragment = document.createDocumentFragment();
+            items.forEach((item) => {
+                const li = document.createElement('li');
+                li.textContent = item;
+                fragment.appendChild(li);
+            });
+            container.appendChild(fragment);
+        }
 
-        function checkLanguages() {
-            if (sourceLang.value === targetLang.value) {
-                alert('Les langues source et cible doivent être différentes');
+        function updateLanguageDirection() {
+            const sourceIsRTL = rtlLanguageSet.has(sourceLang.value);
+            const targetIsRTL = rtlLanguageSet.has(targetLang.value);
+
+            translationInput.dir = sourceIsRTL ? 'rtl' : 'ltr';
+            translationInput.classList.toggle('rtl-support', sourceIsRTL);
+
+            translationOutput.dir = targetIsRTL ? 'rtl' : 'ltr';
+            translationOutput.classList.toggle('rtl-support', targetIsRTL);
+        }
+
+        function showCopyFeedback(button) {
+            const original = button.textContent;
+            button.textContent = '✅ Copié !';
+            setTimeout(() => {
+                button.textContent = original;
+            }, 1500);
+        }
+
+        async function copyToClipboard(text, button) {
+            if (!text) {
+                return;
+            }
+            try {
+                await navigator.clipboard.writeText(text);
+                showCopyFeedback(button);
+            } catch (err) {
+                console.warn('Impossible de copier le texte', err);
             }
         }
 
-        function resetTextResult() {
-            translatedTextOutput.textContent = '';
-            textResult.style.display = 'none';
-        }
+        copyTranslationBtn.addEventListener('click', () => copyToClipboard(translationOutput.value, copyTranslationBtn));
+        copyCorrectionBtn.addEventListener('click', () => copyToClipboard(correctionOutput.value, copyCorrectionBtn));
+        copyReformulationBtn.addEventListener('click', () => copyToClipboard(reformulationOutput.value, copyReformulationBtn));
+        copySummaryBtn.addEventListener('click', () => copyToClipboard(summaryOutput.value, copySummaryBtn));
 
-        function displayTextTranslation(translatedText) {
-            translatedTextOutput.textContent = translatedText;
-            copyTextBtn.textContent = '📋 Copier';
-            textResult.style.display = 'flex';
-        }
+        sourceLang.addEventListener('change', updateLanguageDirection);
+        targetLang.addEventListener('change', updateLanguageDirection);
+        updateLanguageDirection();
 
-        // Soumission du formulaire
-        form.addEventListener('submit', async (e) => {
-            e.preventDefault();
-
+        form.addEventListener('submit', async (event) => {
+            event.preventDefault();
             errorDiv.style.display = 'none';
-            reportDiv.style.display = 'none';
-            resetTextResult();
-            translatedBlob = null;
-
-            if (sourceLang.value === targetLang.value) {
-                showError('Les langues source et cible doivent être différentes');
-                return;
-            }
-
-            if (activeTab === 'text') {
-                if (!textInput.value.trim()) {
-                    showError('Le texte à traduire ne peut pas être vide');
-                    return;
-                }
-            } else if (!fileInput.files.length) {
-                showError('Veuillez sélectionner un fichier XML');
-                return;
-            }
 
             const activeButton = submitButtons[activeTab];
+            if (!activeButton) {
+                return;
+            }
+
             activeButton.disabled = true;
+            progressText.textContent = progressMessages[activeTab] || 'Traitement en cours...';
             progress.style.display = 'block';
 
             try {
-                if (activeTab === 'text') {
-                    const formData = new FormData();
-                    formData.append('text', textInput.value.trim());
-                    formData.append('source_lang', sourceLang.value);
-                    formData.append('target_lang', targetLang.value);
-                    if (modelSelect.value) {
-                        formData.append('model', modelSelect.value);
-                    }
+                let response;
+                const formData = new FormData();
+                if (modelSelect.value) {
+                    formData.append('model', modelSelect.value);
+                }
 
-                    const response = await fetch('/translate-text', {
-                        method: 'POST',
-                        body: formData,
-                    });
+                switch (activeTab) {
+                    case 'translation': {
+                        formData.append('text', translationInput.value);
+                        formData.append('source_lang', sourceLang.value);
+                        formData.append('target_lang', targetLang.value);
 
-                    if (!response.ok) {
-                        const error = await response.json().catch(() => ({}));
-                        throw new Error(error.detail || 'Erreur lors de la traduction du texte');
-                    }
+                        response = await fetch('/translate-text', {
+                            method: 'POST',
+                            body: formData,
+                        });
 
-                    const data = await response.json();
-                    if (data.translated_text) {
-                        displayTextTranslation(data.translated_text);
-                    } else {
-                        throw new Error('Réponse inattendue du serveur');
-                    }
-                } else {
-                    const formData = new FormData();
-                    formData.append('file', fileInput.files[0]);
-                    formData.append('source_lang', sourceLang.value);
-                    formData.append('target_lang', targetLang.value);
-                    if (modelSelect.value) {
-                        formData.append('model', modelSelect.value);
-                    }
-
-                    const response = await fetch('/translate', {
-                        method: 'POST',
-                        body: formData,
-                    });
-
-                    if (!response.ok) {
-                        const error = await response.json().catch(() => ({}));
-                        throw new Error(error.detail || 'Erreur lors de la traduction');
-                    }
-
-                    const reportHeader = response.headers.get('X-Translation-Report');
-                    const contentDisposition = response.headers.get('Content-Disposition');
-
-                    if (contentDisposition) {
-                        const matches = /filename="([^"]+)"/.exec(contentDisposition);
-                        if (matches) {
-                            translatedFilename = matches[1];
+                        if (!response.ok) {
+                            const error = await response.json().catch(() => ({}));
+                            throw new Error(error.detail || 'Erreur lors de la traduction');
                         }
-                    }
 
-                    translatedBlob = await response.blob();
-
-                    if (reportHeader) {
-                        const report = JSON.parse(reportHeader);
-                        displayReport(report);
+                        const data = await response.json();
+                        translationOutput.value = data.translated_text || '';
+                        break;
                     }
+                    case 'correction': {
+                        formData.append('text', correctionInput.value);
+
+                        response = await fetch('/correct-text', {
+                            method: 'POST',
+                            body: formData,
+                        });
+
+                        if (!response.ok) {
+                            const error = await response.json().catch(() => ({}));
+                            throw new Error(error.detail || 'Erreur lors de la correction');
+                        }
+
+                        const data = await response.json();
+                        correctionOutput.value = data.corrected_text || '';
+                        renderList(correctionExplanationList, data.explanations || []);
+                        correctionExplanations.style.display = (data.explanations && data.explanations.length) ? 'block' : 'none';
+                        break;
+                    }
+                    case 'reformulation': {
+                        formData.append('text', reformulationInput.value);
+
+                        response = await fetch('/reformulate-text', {
+                            method: 'POST',
+                            body: formData,
+                        });
+
+                        if (!response.ok) {
+                            const error = await response.json().catch(() => ({}));
+                            throw new Error(error.detail || 'Erreur lors de la reformulation');
+                        }
+
+                        const data = await response.json();
+                        reformulationOutput.value = data.reformulated_text || '';
+                        renderList(reformulationHighlightList, data.highlights || []);
+                        reformulationHighlights.style.display = (data.highlights && data.highlights.length) ? 'block' : 'none';
+                        break;
+                    }
+                    case 'summary': {
+                        formData.append('text', summaryInput.value);
+
+                        response = await fetch('/meeting-summary', {
+                            method: 'POST',
+                            body: formData,
+                        });
+
+                        if (!response.ok) {
+                            const error = await response.json().catch(() => ({}));
+                            throw new Error(error.detail || 'Erreur lors de la génération du compte rendu');
+                        }
+
+                        const data = await response.json();
+                        summaryOutput.value = data.summary || '';
+                        renderList(summaryDecisions, data.decisions || []);
+                        renderList(summaryActions, data.action_items || []);
+                        break;
+                    }
+                    default:
+                        throw new Error('Onglet inconnu');
                 }
             } catch (error) {
                 showError(error.message);
@@ -723,44 +745,24 @@
             errorDiv.style.display = 'block';
         }
 
-        function displayReport(report) {
-            document.getElementById('totalSegments').textContent = report.total_segments;
-            document.getElementById('translatedSegments').textContent = report.translated;
-            document.getElementById('failedSegments').textContent = report.failed;
-            document.getElementById('duration').textContent = report.duration_seconds.toFixed(1) + 's';
+        function syncScrollAreas() {
+            const left = translationInput;
+            const right = translationOutput;
+            let syncing = false;
 
-            reportDiv.style.display = 'block';
+            function sync(source, target) {
+                if (syncing) return;
+                syncing = true;
+                const ratio = source.scrollTop / (source.scrollHeight - source.clientHeight || 1);
+                target.scrollTop = ratio * (target.scrollHeight - target.clientHeight);
+                syncing = false;
+            }
+
+            left.addEventListener('scroll', () => sync(left, right));
+            right.addEventListener('scroll', () => sync(right, left));
         }
 
-        // Téléchargement
-        downloadBtn.addEventListener('click', () => {
-            if (translatedBlob) {
-                const url = window.URL.createObjectURL(translatedBlob);
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = translatedFilename || 'translated.xml';
-                document.body.appendChild(a);
-                a.click();
-                document.body.removeChild(a);
-                window.URL.revokeObjectURL(url);
-            }
-        });
-
-        copyTextBtn.addEventListener('click', async () => {
-            if (!translatedTextOutput.textContent) {
-                return;
-            }
-
-            try {
-                await navigator.clipboard.writeText(translatedTextOutput.textContent);
-                copyTextBtn.textContent = '✅ Copié !';
-                setTimeout(() => {
-                    copyTextBtn.textContent = '📋 Copier';
-                }, 1500);
-            } catch (err) {
-                console.warn('Impossible de copier le texte', err);
-            }
-        });
+        syncScrollAreas();
 
         async function loadModels() {
             try {
@@ -800,7 +802,6 @@
                     const option = document.createElement('option');
                     option.value = fallbackModel;
                     option.textContent = fallbackModel;
-                    option.selected = true;
                     modelSelect.appendChild(option);
                 }
             }

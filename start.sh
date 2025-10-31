@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Script de démarrage rapide pour SCENARI Translator
+# Script de démarrage rapide pour DCIA
 # Usage: ./start.sh [options]
 
 set -e
@@ -90,7 +90,7 @@ load_proxy_from_apt
 echo -e "${BLUE}"
 cat << "EOF"
 ╔═══════════════════════════════════════════╗
-║     SCENARI Translator Deployment        ║
+║           DCIA Deployment                 ║
 ║          FastAPI + Ollama                 ║
 ╚═══════════════════════════════════════════╝
 EOF

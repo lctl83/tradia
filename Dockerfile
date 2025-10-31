@@ -2,7 +2,7 @@ FROM python:3.11-slim
 
 # Métadonnées
 LABEL maintainer="Infrastructure DSI"
-LABEL description="SCENARI Translator - Traduction de fichiers XML via Ollama"
+LABEL description="DCIA - Suite d'assistants linguistiques via Ollama"
 
 # Variables d'environnement
 ENV PYTHONUNBUFFERED=1 \
