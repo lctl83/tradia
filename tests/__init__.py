@@ -1,1 +1,1 @@
-"""Tests pour SCENARI Translator."""
+"""Tests pour DCIA."""

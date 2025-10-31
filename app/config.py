@@ -1,4 +1,4 @@
-"""Configuration de l'application SCENARI Translator."""
+"""Configuration de l'application DCIA."""
 import os
 from typing import Optional
 
@@ -8,7 +8,7 @@ class Settings:
     
     # Ollama
     OLLAMA_BASE_URL: str = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
-    OLLAMA_MODEL: str = os.getenv("OLLAMA_MODEL", "llama3.2:latest")
+    OLLAMA_MODEL: str = os.getenv("OLLAMA_MODEL", "mistral-small:latest")
     OLLAMA_TIMEOUT: int = int(os.getenv("OLLAMA_TIMEOUT", "120"))
     OLLAMA_MAX_RETRIES: int = int(os.getenv("OLLAMA_MAX_RETRIES", "3"))
     

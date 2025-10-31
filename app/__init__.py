@@ -1,2 +1,2 @@
-"""Application SCENARI Translator."""
+"""Application DCIA."""
 __version__ = "1.0.0"

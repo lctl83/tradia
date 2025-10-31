@@ -1,7 +1,9 @@
-"""Tests d'intégration pour l'application complète."""
+"""Tests d'intégration pour DCIA."""
+from unittest.mock import AsyncMock, patch
+
 import pytest
 from fastapi.testclient import TestClient
-from unittest.mock import patch, Mock
+
 from app.main import app
 
 
@@ -11,262 +13,165 @@ def client():
     return TestClient(app)
 
 
-@pytest.fixture
-def sample_xml_file():
-    """Fichier XML de test."""
-    content = b"""<?xml version="1.0" encoding="UTF-8"?>
-<sc:item xmlns:sc="http://www.utc.fr/ics/scenari/v3/core" xml:lang="fr">
-    <sc:title>Test Document</sc:title>
-    <sc:para>Ceci est un test.</sc:para>
-</sc:item>
-"""
-    return ("test.xml", content, "application/xml")
+def _mock_translator(**methods):
+    """Crée un mock d'OllamaTranslator asynchrone."""
+    translator = AsyncMock()
+    translator.__aenter__.return_value = translator
+    translator.__aexit__.return_value = False
+    for name, value in methods.items():
+        getattr(translator, name).return_value = value
+    return translator
 
 
 def test_index_page(client):
-    """Test de la page d'accueil."""
+    """La page d'accueil doit mentionner DCIA."""
     response = client.get("/")
     assert response.status_code == 200
-    assert b"SCENARI Translator" in response.content
+    assert b"DCIA" in response.content
 
 
 def test_health_check(client):
-    """Test du endpoint healthcheck."""
-    with patch('app.main.OllamaTranslator') as mock_translator_class:
-        mock_translator = Mock()
-        mock_translator.check_health.return_value = True
-        mock_translator_class.return_value = mock_translator
-        
+    """Le healthcheck doit retourner l'état du service Ollama."""
+    translator = _mock_translator(check_health=True)
+    with patch("app.main.OllamaTranslator", return_value=translator):
         response = client.get("/healthz")
-        assert response.status_code == 200
-        data = response.json()
-        assert "status" in data
-        assert "ollama_available" in data
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["status"] == "healthy"
+    assert data["ollama_available"] is True
 
 
 def test_metrics_endpoint(client):
-    """Test du endpoint métriques."""
+    """Les métriques doivent être initialisées à zéro."""
     response = client.get("/metrics")
     assert response.status_code == 200
     data = response.json()
-    assert "total_translations" in data
-    assert "total_segments_translated" in data
+    assert data == {
+        "text_translations": 0,
+        "corrections": 0,
+        "reformulations": 0,
+        "meeting_summaries": 0,
+    }
 
 
-def test_translate_endpoint_success(client, sample_xml_file):
-    """Test de traduction réussie."""
-    with patch('app.main.OllamaTranslator') as mock_translator_class:
-        mock_translator = Mock()
-        mock_translator.translate_text.return_value = "This is a test."
-        mock_translator_class.return_value = mock_translator
-        
+def test_translate_text_success(client):
+    """La traduction de texte retourne le texte traduit."""
+    translator = _mock_translator(translate_text="Hello")
+    with patch("app.main.OllamaTranslator", return_value=translator):
         response = client.post(
-            "/translate",
+            "/translate-text",
             data={
+                "text": "Bonjour",
                 "source_lang": "fr",
                 "target_lang": "en",
-                "model": "llama3.2:latest"
             },
-            files={"file": sample_xml_file}
         )
-        
-        assert response.status_code == 200
-        assert response.headers["content-type"] == "application/xml"
-        assert "X-Translation-Report" in response.headers
+
+    assert response.status_code == 200
+    assert response.json()["translated_text"] == "Hello"
 
 
-def test_translate_invalid_language(client, sample_xml_file):
-    """Test avec langue invalide."""
+def test_translate_text_invalid_language(client):
+    """La traduction échoue si la langue cible est invalide."""
     response = client.post(
-        "/translate",
+        "/translate-text",
         data={
+            "text": "Bonjour",
             "source_lang": "fr",
-            "target_lang": "de",  # Non supporté
-            "model": "llama3.2:latest"
+            "target_lang": "de",
         },
-        files={"file": sample_xml_file}
     )
-    
+
     assert response.status_code == 400
 
 
-def test_translate_same_languages(client, sample_xml_file):
-    """Test avec langues identiques."""
+def test_translate_text_same_language(client):
+    """La traduction échoue si la source et la cible sont identiques."""
     response = client.post(
-        "/translate",
+        "/translate-text",
         data={
+            "text": "Bonjour",
             "source_lang": "fr",
-            "target_lang": "fr",  # Identique
-            "model": "llama3.2:latest"
+            "target_lang": "fr",
         },
-        files={"file": sample_xml_file}
     )
-    
+
     assert response.status_code == 400
 
 
-def test_translate_invalid_file_type(client):
-    """Test avec type de fichier invalide."""
-    response = client.post(
-        "/translate",
-        data={
-            "source_lang": "fr",
-            "target_lang": "en",
-            "model": "llama3.2:latest"
-        },
-        files={"file": ("test.txt", b"Not XML", "text/plain")}
+def test_correct_text_success(client):
+    """La correction retourne le texte corrigé et des explications."""
+    translator = _mock_translator(
+        correct_text='{"corrected_text": "Texte corrigé", "explanations": ["Correction 1"]}'
     )
-    
-    assert response.status_code == 400
-
-
-def test_translate_invalid_xml(client):
-    """Test avec XML invalide."""
-    response = client.post(
-        "/translate",
-        data={
-            "source_lang": "fr",
-            "target_lang": "en",
-            "model": "llama3.2:latest"
-        },
-        files={"file": ("test.xml", b"<invalid>Not closed", "application/xml")}
-    )
-    
-    assert response.status_code == 400
-
-
-def test_translate_no_translatable_segments(client):
-    """Test avec XML sans segments traduisibles."""
-    xml_no_text = b"""<?xml version="1.0" encoding="UTF-8"?>
-<root>
-    <empty></empty>
-</root>
-"""
-    response = client.post(
-        "/translate",
-        data={
-            "source_lang": "fr",
-            "target_lang": "en",
-            "model": "llama3.2:latest"
-        },
-        files={"file": ("test.xml", xml_no_text, "application/xml")}
-    )
-    
-    assert response.status_code == 400
-    assert b"No translatable segments" in response.content
-
-
-def test_translate_with_translation_failures(client, sample_xml_file):
-    """Test avec échecs de traduction."""
-    with patch('app.main.OllamaTranslator') as mock_translator_class:
-        mock_translator = Mock()
-        # Premier appel réussit, second échoue
-        mock_translator.translate_text.side_effect = ["Translated", None]
-        mock_translator_class.return_value = mock_translator
-        
+    with patch("app.main.OllamaTranslator", return_value=translator):
         response = client.post(
-            "/translate",
+            "/correct-text",
             data={
-                "source_lang": "fr",
-                "target_lang": "en",
-                "model": "llama3.2:latest"
+                "text": "Texte a corriger",
             },
-            files={"file": sample_xml_file}
         )
-        
-        assert response.status_code == 200
-        report_header = response.headers.get("X-Translation-Report")
-        assert report_header is not None
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["corrected_text"] == "Texte corrigé"
+    assert data["explanations"] == ["Correction 1"]
 
 
-def test_output_filename_format(client, sample_xml_file):
-    """Test du format du nom de fichier de sortie."""
-    with patch('app.main.OllamaTranslator') as mock_translator_class:
-        mock_translator = Mock()
-        mock_translator.translate_text.return_value = "Translated"
-        mock_translator_class.return_value = mock_translator
-        
+def test_correct_text_invalid_payload(client):
+    """Une réponse non JSON renvoie une erreur 502."""
+    translator = _mock_translator(correct_text="Pas du JSON")
+    with patch("app.main.OllamaTranslator", return_value=translator):
         response = client.post(
-            "/translate",
-            data={
-                "source_lang": "fr",
-                "target_lang": "en",
-                "model": "llama3.2:latest"
-            },
-            files={"file": sample_xml_file}
+            "/correct-text",
+            data={"text": "Texte"},
         )
-        
-        content_disposition = response.headers.get("Content-Disposition")
-        assert "test.fr-en." in content_disposition
-        assert ".xml" in content_disposition
+
+    assert response.status_code == 502
 
 
-def test_translation_preserves_xml_structure(client, sample_xml_file):
-    """Test que la traduction préserve la structure XML."""
-    with patch('app.main.OllamaTranslator') as mock_translator_class:
-        mock_translator = Mock()
-        mock_translator.translate_text.return_value = "Translated text"
-        mock_translator_class.return_value = mock_translator
-        
-        response = client.post(
-            "/translate",
-            data={
-                "source_lang": "fr",
-                "target_lang": "en",
-                "model": "llama3.2:latest"
-            },
-            files={"file": sample_xml_file}
-        )
-        
-        output_xml = response.content
-        
-        # Vérifications de structure
-        assert b"<?xml" in output_xml
-        assert b"sc:item" in output_xml
-        assert b"sc:title" in output_xml
-        assert b'xml:lang="en"' in output_xml
-
-
-def test_translation_updates_xml_lang(client):
-    """Test que xml:lang est mis à jour."""
-    xml_content = b"""<?xml version="1.0" encoding="UTF-8"?>
-<sc:item xmlns:sc="http://www.utc.fr/ics/scenari/v3/core" xml:lang="fr">
-    <sc:para>Texte</sc:para>
-</sc:item>
-"""
-    
-    with patch('app.main.OllamaTranslator') as mock_translator_class:
-        mock_translator = Mock()
-        mock_translator.translate_text.return_value = "Text"
-        mock_translator_class.return_value = mock_translator
-        
-        response = client.post(
-            "/translate",
-            data={
-                "source_lang": "fr",
-                "target_lang": "ar",
-                "model": "llama3.2:latest"
-            },
-            files={"file": ("test.xml", xml_content, "application/xml")}
-        )
-        
-        output_xml = response.content
-        assert b'xml:lang="ar"' in output_xml
-
-
-def test_file_size_limit(client):
-    """Test de la limite de taille de fichier."""
-    # Créer un fichier trop gros (simulé)
-    large_content = b"<root>" + b"x" * (51 * 1024 * 1024) + b"</root>"
-    
-    response = client.post(
-        "/translate",
-        data={
-            "source_lang": "fr",
-            "target_lang": "en",
-            "model": "llama3.2:latest"
-        },
-        files={"file": ("large.xml", large_content, "application/xml")}
+def test_reformulation_success(client):
+    """La reformulation retourne un texte et des explications."""
+    translator = _mock_translator(
+        reformulate_text='{"reformulated_text": "Texte reformulé", "highlights": ["Ajout de clarté"]}'
     )
-    
-    assert response.status_code == 413
+    with patch("app.main.OllamaTranslator", return_value=translator):
+        response = client.post(
+            "/reformulate-text",
+            data={"text": "Texte"},
+        )
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["reformulated_text"] == "Texte reformulé"
+    assert data["highlights"] == ["Ajout de clarté"]
+
+
+def test_meeting_summary_success(client):
+    """Le compte rendu retourne résumé, décisions et actions."""
+    translator = _mock_translator(
+        summarize_meeting='{"summary": "Résumé", "decisions": ["Décision"], "action_items": ["Action"]}'
+    )
+    with patch("app.main.OllamaTranslator", return_value=translator):
+        response = client.post(
+            "/meeting-summary",
+            data={"text": "Notes"},
+        )
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["summary"] == "Résumé"
+    assert data["decisions"] == ["Décision"]
+    assert data["action_items"] == ["Action"]
+
+
+def test_models_endpoint(client):
+    """La liste des modèles place le modèle par défaut en premier."""
+    translator = _mock_translator(list_models=["model-b", "mistral-small:latest"])
+    with patch("app.main.OllamaTranslator", return_value=translator):
+        response = client.get("/models")
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["models"][0] == "mistral-small:latest"

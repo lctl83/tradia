@@ -7,7 +7,7 @@ class TranslationRequest(BaseModel):
     """Requête de traduction."""
     source_lang: str = Field(..., pattern="^(fr|en|ar)$")
     target_lang: str = Field(..., pattern="^(fr|en|ar)$")
-    model: str = Field(default="llama3.2:latest")
+    model: str = Field(default="mistral-small:latest")
     
     @field_validator('target_lang')
     @classmethod
