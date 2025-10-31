@@ -6,7 +6,7 @@ services:
     environment:
       # Configuration Ollama
       - OLLAMA_BASE_URL=http://host.docker.internal:11434
-      - OLLAMA_MODEL=llama3.2:latest
+      - OLLAMA_MODEL=mistral-small3.2:latest
       - OLLAMA_TIMEOUT=120
       - OLLAMA_MAX_RETRIES=3
       - UVICORN_PORT=8000

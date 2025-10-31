@@ -89,7 +89,7 @@ ports:
 Créer un fichier `.env` :
 ```bash
 OLLAMA_BASE_URL=http://localhost:11434
-OLLAMA_MODEL=llama3.2:latest
+OLLAMA_MODEL=mistral-small3.2:latest
 MAX_UPLOAD_MB=50
 ```
 

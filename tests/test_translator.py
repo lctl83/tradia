@@ -132,16 +132,16 @@ async def test_list_models(translator):
     mock_response.status_code = 200
     mock_response.json.return_value = {
         "models": [
-            {"name": "mistral-small:latest"},
+            {"name": "mistral-small3.2:latest"},
             {"name": "llama3.1"},
-            {"name": "mistral-small:latest"},
+            {"name": "mistral-small3.2:latest"},
         ]
     }
 
     translator.client.get = AsyncMock(return_value=mock_response)
 
     models = await translator.list_models()
-    assert models == ["mistral-small:latest", "llama3.1"]
+    assert models == ["mistral-small3.2:latest", "llama3.1"]
 
 
 @pytest.mark.asyncio

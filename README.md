@@ -19,7 +19,7 @@ Suite d'assistants linguistiques internes DCI pour traduire, corriger, reformule
 
 - Docker et Docker Compose
 - Ollama installé et accessible (par défaut sur `http://localhost:11434`)
-- Un modèle Ollama installé (ex: `mistral-small:latest`)
+- Un modèle Ollama installé (ex: `mistral-small3.2:latest`)
 
 ### Vérification d'Ollama
 
@@ -31,7 +31,7 @@ curl http://localhost:11434/api/tags
 curl -fsSL https://ollama.com/install.sh | sh
 
 # Télécharger un modèle
-ollama pull mistral-small:latest
+ollama pull mistral-small3.2:latest
 ```
 
 ## 🚀 Installation et déploiement
@@ -108,7 +108,7 @@ NO_PROXY=localhost,127.0.0.1
 | Variable | Défaut | Description |
 |----------|--------|-------------|
 | `OLLAMA_BASE_URL` | `http://localhost:11434` | URL du service Ollama |
-| `OLLAMA_MODEL` | `mistral-small:latest` | Modèle par défaut |
+| `OLLAMA_MODEL` | `mistral-small3.2:latest` | Modèle par défaut |
 | `OLLAMA_TIMEOUT` | `120` | Timeout en secondes |
 | `OLLAMA_MAX_RETRIES` | `3` | Nombre de retries |
 | `MAX_UPLOAD_MB` | `50` | Taille max fichier (MB) |
