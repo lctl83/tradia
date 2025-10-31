@@ -168,10 +168,10 @@ def test_meeting_summary_success(client):
 
 def test_models_endpoint(client):
     """La liste des modèles place le modèle par défaut en premier."""
-    translator = _mock_translator(list_models=["model-b", "mistral-small:latest"])
+    translator = _mock_translator(list_models=["model-b", "mistral-small3.2:latest"])
     with patch("app.main.OllamaTranslator", return_value=translator):
         response = client.get("/models")
 
     assert response.status_code == 200
     data = response.json()
-    assert data["models"][0] == "mistral-small:latest"
+    assert data["models"][0] == "mistral-small3.2:latest"

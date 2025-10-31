@@ -3,7 +3,12 @@
 # Script de démarrage rapide pour DCIA
 # Usage: ./start.sh [options]
 
-set -e
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+cd "${SCRIPT_DIR}"
+
+HOST_PROXY_CONF="${SCRIPT_DIR}/host-proxy.conf"
 
 # Couleurs pour les messages
 RED='\033[0;31m'
@@ -71,17 +76,17 @@ for proxy_file in /etc/apt/apt.conf.d/90curtin-aptproxy \
                   /etc/apt/apt.conf.d/*proxy*; do
     if [ -f "$proxy_file" ] && [ -s "$proxy_file" ]; then
         log_success "Configuration proxy trouvée : $proxy_file"
-        cp "$proxy_file" host-proxy.conf
+        cp "$proxy_file" "${HOST_PROXY_CONF}"
         PROXY_FOUND=true
         echo "Contenu du fichier proxy :"
-        cat host-proxy.conf
+        cat "${HOST_PROXY_CONF}"
         break
     fi
 done
 
 if [ "$PROXY_FOUND" = false ]; then
     log_info "Aucune configuration proxy système détectée (connexion directe)"
-    : > host-proxy.conf
+    : > "${HOST_PROXY_CONF}"
 fi
 
 load_proxy_from_apt
@@ -132,16 +137,16 @@ else
 fi
 
 # Création du fichier .env si inexistant
-if [ ! -f .env ]; then
+if [ ! -f "${SCRIPT_DIR}/.env" ]; then
     log_info "Création du fichier .env à partir de .env.example..."
-    cp .env.example .env
+    cp "${SCRIPT_DIR}/.env.example" "${SCRIPT_DIR}/.env"
     log_success "Fichier .env créé"
 fi
 
 # Création du répertoire logs
-if [ ! -d logs ]; then
+if [ ! -d "${SCRIPT_DIR}/logs" ]; then
     log_info "Création du répertoire logs..."
-    mkdir -p logs
+    mkdir -p "${SCRIPT_DIR}/logs"
     log_success "Répertoire logs créé"
 fi
 

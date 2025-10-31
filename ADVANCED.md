@@ -171,7 +171,7 @@ systemctl restart ollama
 
 ```bash
 # Télécharger les modèles à l'avance
-ollama pull llama3.2:latest
+ollama pull mistral-small3.2:latest
 ollama pull mistral:latest
 
 # Vérifier
@@ -410,7 +410,7 @@ curl -fsSL https://ollama.com/install.sh | sh
 systemctl start ollama
 
 # 4. Mettre à jour les modèles
-ollama pull llama3.2:latest
+ollama pull mistral-small3.2:latest
 ```
 
 ### Rotation des logs
@@ -462,7 +462,7 @@ nvidia-smi
 # Stress test
 for i in {1..10}; do
     curl -X POST http://localhost:11434/api/generate \
-        -d '{"model":"llama3.2:latest","prompt":"test"}' &
+        -d '{"model":"mistral-small3.2:latest","prompt":"test"}' &
 done
 ```
 

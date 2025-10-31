@@ -55,13 +55,13 @@ Retourne les statistiques d'utilisation de l'application.
 
 **GET /models**
 
-Retourne la liste des modèles Ollama disponibles côté serveur. Le modèle par défaut (`mistral-small:latest`) est toujours positionné en tête de liste.
+Retourne la liste des modèles Ollama disponibles côté serveur. Le modèle par défaut (`mistral-small3.2:latest`) est toujours positionné en tête de liste.
 
 **Réponse** :
 ```json
 {
-  "models": ["mistral-small:latest", "model-b"],
-  "default_model": "mistral-small:latest"
+  "models": ["mistral-small3.2:latest", "model-b"],
+  "default_model": "mistral-small3.2:latest"
 }
 ```
 
@@ -80,7 +80,7 @@ Traduit un texte brut entre les langues supportées (FR/EN/AR).
 | `text` | String | Oui | Texte à traduire |
 | `source_lang` | String | Oui | Langue source (`fr`, `en`, `ar`) |
 | `target_lang` | String | Oui | Langue cible (`fr`, `en`, `ar`) |
-| `model` | String | Non | Modèle Ollama (défaut : `mistral-small:latest`) |
+| `model` | String | Non | Modèle Ollama (défaut : `mistral-small3.2:latest`) |
 
 **Réponse** :
 
