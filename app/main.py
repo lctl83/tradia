@@ -305,6 +305,9 @@ async def list_models() -> JSONResponse:
     if not unique_models and default_model:
         unique_models = [default_model]
 
+    if not unique_models:
+        unique_models = ["default_model"]
+
     return JSONResponse({"models": unique_models, "default_model": default_model})
 
 

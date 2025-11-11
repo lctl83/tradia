@@ -175,3 +175,14 @@ def test_models_endpoint(client):
     assert response.status_code == 200
     data = response.json()
     assert data["models"][0] == "mistral-small3.2:latest"
+
+
+def test_models_endpoint_empty_ollama_list(client):
+    """L'endpoint des modèles retourne une liste par défaut si Ollama ne retourne rien."""
+    translator = _mock_translator(list_models=[])
+    with patch("app.main.OllamaTranslator", return_value=translator):
+        response = client.get("/models")
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["models"] == ["mistral-small3.2:latest"]
