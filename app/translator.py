@@ -58,6 +58,11 @@ class CircuitBreaker:
 class OllamaTranslator:
     """Client asynchrone pour interagir avec Ollama."""
 
+    @staticmethod
+    def _is_cloud_model(model: str) -> bool:
+        """Vérifie si le modèle est un modèle cloud (ne supporte pas system/options)."""
+        return model.endswith("-cloud")
+
     SYSTEM_PROMPTS: Dict[tuple[str, str], str] = {
         ("fr", "en"): (
             "You are a French to English translator. "
@@ -171,16 +176,27 @@ class OllamaTranslator:
             logger.error("No system prompt for %s -> %s", source_lang, target_lang)
             return None
 
-        payload = {
-            "model": model or self.model,
-            "prompt": text,
-            "system": system_prompt,
+        used_model = model or self.model
+        is_cloud = self._is_cloud_model(used_model)
+
+        # Pour les modèles cloud, intégrer le system prompt dans le prompt principal
+        if is_cloud:
+            full_prompt = f"[INSTRUCTIONS: {system_prompt}]\n\n{text}"
+        else:
+            full_prompt = text
+
+        payload: Dict[str, object] = {
+            "model": used_model,
+            "prompt": full_prompt,
             "stream": False,
-            "options": {
+        }
+
+        if not is_cloud:
+            payload["system"] = system_prompt
+            payload["options"] = {
                 "temperature": 0.3,
                 "top_p": 0.9,
-            },
-        }
+            }
 
         return await self._generate(payload)
 
@@ -190,7 +206,14 @@ class OllamaTranslator:
             logger.warning("Circuit breaker OPEN, skipping correction")
             return None
 
+        used_model = model or self.model
+        is_cloud = self._is_cloud_model(used_model)
+
+        # Pour les modèles cloud, le system prompt est intégré dans le prompt
+        system_instruction = "[RÔLE: Tu es un correcteur. Réponds UNIQUEMENT avec un objet JSON valide, rien d'autre.]\n\n" if is_cloud else ""
+
         prompt = (
+            f"{system_instruction}"
             "Corrige UNIQUEMENT l'orthographe et la grammaire du texte ci-dessous.\n\n"
             "INTERDICTIONS ABSOLUES (ne JAMAIS modifier ces éléments):\n"
             "- Les dates (2025, 5 décembre, etc.) - même si elles te semblent erronées\n"
@@ -214,16 +237,19 @@ class OllamaTranslator:
             f"Texte à corriger:\n{text}"
         )
 
-        payload = {
-            "model": model or self.model,
+        payload: Dict[str, object] = {
+            "model": used_model,
             "prompt": prompt,
-            "system": "Tu es un correcteur. Réponds UNIQUEMENT avec un objet JSON valide, rien d'autre.",
             "stream": False,
-            "options": {
+        }
+
+        # Les modèles cloud ne supportent pas system ni options
+        if not is_cloud:
+            payload["system"] = "Tu es un correcteur. Réponds UNIQUEMENT avec un objet JSON valide, rien d'autre."
+            payload["options"] = {
                 "temperature": 0.0,
                 "top_p": 0.9,
-            },
-        }
+            }
 
         return await self._generate(payload)
 
@@ -233,7 +259,13 @@ class OllamaTranslator:
             logger.warning("Circuit breaker OPEN, skipping reformulation")
             return None
 
+        used_model = model or self.model
+        is_cloud = self._is_cloud_model(used_model)
+
+        system_instruction = "[RÔLE: Tu es un assistant de rédaction interne à DCI. Fournis uniquement du JSON valide.]\n\n" if is_cloud else ""
+
         prompt = (
+            f"{system_instruction}"
             "Tu es chargé de reformuler le texte suivant pour l'améliorer (fluidité, clarté, ton professionnel) tout en conservant le sens. "
             "Retourne exclusivement un objet JSON avec la structure :\n"
             "{\n"
@@ -244,16 +276,18 @@ class OllamaTranslator:
             f"Texte à reformuler :\n{text}"
         )
 
-        payload = {
-            "model": model or self.model,
+        payload: Dict[str, object] = {
+            "model": used_model,
             "prompt": prompt,
-            "system": "Tu es un assistant de rédaction interne à DCI. Fournis uniquement du JSON valide.",
             "stream": False,
-            "options": {
+        }
+
+        if not is_cloud:
+            payload["system"] = "Tu es un assistant de rédaction interne à DCI. Fournis uniquement du JSON valide."
+            payload["options"] = {
                 "temperature": 0.4,
                 "top_p": 0.9,
-            },
-        }
+            }
 
         return await self._generate(payload)
 
@@ -268,9 +302,15 @@ class OllamaTranslator:
             logger.warning("Circuit breaker OPEN, skipping meeting summary")
             return None
 
+        used_model = model or self.model
+        is_cloud = self._is_cloud_model(used_model)
+
+        system_instruction = "[RÔLE: Tu es l'assistant de compte rendu interne à DCI. Réponds uniquement avec du JSON valide.]\n\n" if is_cloud else ""
+
         # Build prompt based on input type
         if image_base64 and text:
             prompt = (
+                f"{system_instruction}"
                 "Analyse l'image ET le texte fournis pour créer un compte rendu de réunion. "
                 "L'image peut contenir des notes manuscrites, un tableau blanc, etc. "
                 "Retourne uniquement un JSON respectant la structure :\n"
@@ -284,6 +324,7 @@ class OllamaTranslator:
             )
         elif image_base64:
             prompt = (
+                f"{system_instruction}"
                 "Analyse cette image qui contient des notes de réunion (notes manuscrites, tableau blanc, capture d'écran, etc.). "
                 "Extrait le contenu et crée un compte rendu structuré. "
                 "Retourne uniquement un JSON respectant la structure :\n"
@@ -296,6 +337,7 @@ class OllamaTranslator:
             )
         else:
             prompt = (
+                f"{system_instruction}"
                 "À partir des notes de réunion suivantes, crée un compte rendu clair. "
                 "Retourne uniquement un JSON respectant la structure :\n"
                 "{\n"
@@ -307,16 +349,18 @@ class OllamaTranslator:
                 f"Notes de réunion :\n{text}"
             )
 
-        payload = {
-            "model": model or self.model,
+        payload: Dict[str, object] = {
+            "model": used_model,
             "prompt": prompt,
-            "system": "Tu es l'assistant de compte rendu interne à DCI. Réponds uniquement avec du JSON valide.",
             "stream": False,
-            "options": {
+        }
+
+        if not is_cloud:
+            payload["system"] = "Tu es l'assistant de compte rendu interne à DCI. Réponds uniquement avec du JSON valide."
+            payload["options"] = {
                 "temperature": 0.3,
                 "top_p": 0.9,
-            },
-        }
+            }
 
         # Add image for vision models
         if image_base64:
@@ -432,15 +476,25 @@ class OllamaTranslator:
             logger.error("No system prompt for %s -> %s", source_lang, target_lang)
             return
 
-        payload = {
-            "model": model or self.model,
-            "prompt": text,
-            "system": system_prompt,
-            "options": {
+        used_model = model or self.model
+        is_cloud = self._is_cloud_model(used_model)
+
+        if is_cloud:
+            full_prompt = f"[INSTRUCTIONS: {system_prompt}]\n\n{text}"
+        else:
+            full_prompt = text
+
+        payload: Dict[str, object] = {
+            "model": used_model,
+            "prompt": full_prompt,
+        }
+
+        if not is_cloud:
+            payload["system"] = system_prompt
+            payload["options"] = {
                 "temperature": 0.3,
                 "top_p": 0.9,
-            },
-        }
+            }
 
         async for token in self._generate_stream(payload):
             yield token
@@ -449,7 +503,13 @@ class OllamaTranslator:
         self, text: str, model: Optional[str] = None
     ) -> AsyncGenerator[str, None]:
         """Corrige un texte en streaming."""
+        used_model = model or self.model
+        is_cloud = self._is_cloud_model(used_model)
+
+        system_instruction = "[RÔLE: Tu es un correcteur. Réponds UNIQUEMENT avec un objet JSON valide, rien d'autre.]\n\n" if is_cloud else ""
+
         prompt = (
+            f"{system_instruction}"
             "Corrige UNIQUEMENT l'orthographe et la grammaire du texte ci-dessous.\n\n"
             "INTERDICTIONS ABSOLUES (ne JAMAIS modifier ces éléments):\n"
             "- Les dates (2025, 5 décembre, etc.) - même si elles te semblent erronées\n"
@@ -473,15 +533,17 @@ class OllamaTranslator:
             f"Texte à corriger:\n{text}"
         )
 
-        payload = {
-            "model": model or self.model,
+        payload: Dict[str, object] = {
+            "model": used_model,
             "prompt": prompt,
-            "system": "Tu es un correcteur. Réponds UNIQUEMENT avec un objet JSON valide, rien d'autre.",
-            "options": {
+        }
+
+        if not is_cloud:
+            payload["system"] = "Tu es un correcteur. Réponds UNIQUEMENT avec un objet JSON valide, rien d'autre."
+            payload["options"] = {
                 "temperature": 0.0,
                 "top_p": 0.9,
-            },
-        }
+            }
 
         async for token in self._generate_stream(payload):
             yield token
@@ -490,7 +552,13 @@ class OllamaTranslator:
         self, text: str, model: Optional[str] = None
     ) -> AsyncGenerator[str, None]:
         """Reformule un texte en streaming."""
+        used_model = model or self.model
+        is_cloud = self._is_cloud_model(used_model)
+
+        system_instruction = "[RÔLE: Tu es un assistant de rédaction interne à DCI. Fournis uniquement du JSON valide.]\n\n" if is_cloud else ""
+
         prompt = (
+            f"{system_instruction}"
             "Tu es chargé de reformuler le texte suivant pour l'améliorer (fluidité, clarté, ton professionnel) tout en conservant le sens. "
             "Retourne exclusivement un objet JSON avec la structure :\n"
             "{\n"
@@ -501,15 +569,17 @@ class OllamaTranslator:
             f"Texte à reformuler :\n{text}"
         )
 
-        payload = {
-            "model": model or self.model,
+        payload: Dict[str, object] = {
+            "model": used_model,
             "prompt": prompt,
-            "system": "Tu es un assistant de rédaction interne à DCI. Fournis uniquement du JSON valide.",
-            "options": {
+        }
+
+        if not is_cloud:
+            payload["system"] = "Tu es un assistant de rédaction interne à DCI. Fournis uniquement du JSON valide."
+            payload["options"] = {
                 "temperature": 0.4,
                 "top_p": 0.9,
-            },
-        }
+            }
 
         async for token in self._generate_stream(payload):
             yield token
@@ -521,9 +591,15 @@ class OllamaTranslator:
         model: Optional[str] = None,
     ) -> AsyncGenerator[str, None]:
         """Produit un compte rendu en streaming."""
+        used_model = model or self.model
+        is_cloud = self._is_cloud_model(used_model)
+
+        system_instruction = "[RÔLE: Tu es l'assistant de compte rendu interne à DCI. Réponds uniquement avec du JSON valide.]\n\n" if is_cloud else ""
+
         # Build prompt based on input type
         if image_base64 and text:
             prompt = (
+                f"{system_instruction}"
                 "Analyse l'image ET le texte fournis pour créer un compte rendu de réunion. "
                 "L'image peut contenir des notes manuscrites, un tableau blanc, etc. "
                 "Retourne uniquement un JSON respectant la structure :\n"
@@ -537,6 +613,7 @@ class OllamaTranslator:
             )
         elif image_base64:
             prompt = (
+                f"{system_instruction}"
                 "Analyse cette image qui contient des notes de réunion (notes manuscrites, tableau blanc, capture d'écran, etc.). "
                 "Extrait le contenu et crée un compte rendu structuré. "
                 "Retourne uniquement un JSON respectant la structure :\n"
@@ -549,6 +626,7 @@ class OllamaTranslator:
             )
         else:
             prompt = (
+                f"{system_instruction}"
                 "À partir des notes de réunion suivantes, crée un compte rendu clair. "
                 "Retourne uniquement un JSON respectant la structure :\n"
                 "{\n"
@@ -560,15 +638,17 @@ class OllamaTranslator:
                 f"Notes de réunion :\n{text}"
             )
 
-        payload = {
-            "model": model or self.model,
+        payload: Dict[str, object] = {
+            "model": used_model,
             "prompt": prompt,
-            "system": "Tu es l'assistant de compte rendu interne à DCI. Réponds uniquement avec du JSON valide.",
-            "options": {
+        }
+
+        if not is_cloud:
+            payload["system"] = "Tu es l'assistant de compte rendu interne à DCI. Réponds uniquement avec du JSON valide."
+            payload["options"] = {
                 "temperature": 0.3,
                 "top_p": 0.9,
-            },
-        }
+            }
 
         # Add image for vision models
         if image_base64:
