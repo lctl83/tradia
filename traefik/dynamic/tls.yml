@@ -8,3 +8,14 @@ tls:
       cipherSuites:
         - TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384
         - TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256
+
+# Middleware pour désactiver le buffering (nécessaire pour SSE/streaming)
+http:
+  middlewares:
+    streaming:
+      buffering:
+        maxRequestBodyBytes: 0
+        memRequestBodyBytes: 0
+        maxResponseBodyBytes: 0
+        memResponseBodyBytes: 0
+        retryExpression: ""

@@ -63,11 +63,20 @@ services:
 
     labels:
       - "traefik.enable=true"
+      # Route principale
       - "traefik.http.routers.tradia.entrypoints=websecure"
       - "traefik.http.routers.tradia.rule=PathPrefix(`/`)"
       - "traefik.http.routers.tradia.tls=true"
       - "traefik.http.routers.tradia.tls.options=default@file"
       - "traefik.http.services.tradia.loadbalancer.server.port=8000"
+      # Route pour les endpoints streaming (sans buffering)
+      - "traefik.http.routers.tradia-stream.entrypoints=websecure"
+      - "traefik.http.routers.tradia-stream.rule=PathPrefix(`/`) && PathRegexp(`.*-stream$`)"
+      - "traefik.http.routers.tradia-stream.tls=true"
+      - "traefik.http.routers.tradia-stream.tls.options=default@file"
+      - "traefik.http.routers.tradia-stream.middlewares=streaming@file"
+      - "traefik.http.routers.tradia-stream.service=tradia"
+      - "traefik.http.routers.tradia-stream.priority=100"
 
   traefik:
     image: traefik:v3.1

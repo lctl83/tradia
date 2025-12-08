@@ -175,11 +175,26 @@ async def translate_text_endpoint(
 
 
 async def _stream_generator(translator: OllamaTranslator, generator, feature_name: str):
-    """Générateur SSE pour le streaming des tokens."""
+    """Générateur SSE pour le streaming des tokens.
+    
+    Utilise le format Server-Sent Events avec flush forcé après chaque token.
+    Ajoute du padding pour forcer les proxies à ne pas bufferiser.
+    """
+    import asyncio
+    
+    # Envoyer un commentaire SSE initial pour forcer l'ouverture du stream
+    # Le ':' est un commentaire SSE qui n'est pas traité par le client
+    yield ": stream opened\n\n"
+    await asyncio.sleep(0)
+    
     try:
         async for token in generator:
             # Format SSE: data: {"token": "..."}
-            yield f"data: {json.dumps({'token': token})}\n\n"
+            # On ajoute un peu de padding pour forcer le flush des proxies
+            message = f"data: {json.dumps({'token': token})}\n\n"
+            yield message
+            # Force un flush du buffer en cédant le contrôle à l'event loop
+            await asyncio.sleep(0)
         yield "data: [DONE]\n\n"
     except Exception as e:
         logger.log("ERROR", f"Streaming error for {feature_name}", error=str(e))
@@ -224,9 +239,11 @@ async def translate_text_stream_endpoint(
         _stream_generator(translator, generator, "translation"),
         media_type="text/event-stream",
         headers={
-            "Cache-Control": "no-cache",
+            "Cache-Control": "no-cache, no-store, must-revalidate",
             "Connection": "keep-alive",
             "X-Accel-Buffering": "no",
+            "Transfer-Encoding": "chunked",
+            "Content-Encoding": "identity",
         },
     )
 
@@ -250,9 +267,11 @@ async def correct_text_stream_endpoint(
         _stream_generator(translator, generator, "correction"),
         media_type="text/event-stream",
         headers={
-            "Cache-Control": "no-cache",
+            "Cache-Control": "no-cache, no-store, must-revalidate",
             "Connection": "keep-alive",
             "X-Accel-Buffering": "no",
+            "Transfer-Encoding": "chunked",
+            "Content-Encoding": "identity",
         },
     )
 
@@ -276,9 +295,11 @@ async def reformulate_text_stream_endpoint(
         _stream_generator(translator, generator, "reformulation"),
         media_type="text/event-stream",
         headers={
-            "Cache-Control": "no-cache",
+            "Cache-Control": "no-cache, no-store, must-revalidate",
             "Connection": "keep-alive",
             "X-Accel-Buffering": "no",
+            "Transfer-Encoding": "chunked",
+            "Content-Encoding": "identity",
         },
     )
 
@@ -315,9 +336,11 @@ async def meeting_summary_stream_endpoint(
         _stream_generator(translator, generator, "meeting_summary"),
         media_type="text/event-stream",
         headers={
-            "Cache-Control": "no-cache",
+            "Cache-Control": "no-cache, no-store, must-revalidate",
             "Connection": "keep-alive",
             "X-Accel-Buffering": "no",
+            "Transfer-Encoding": "chunked",
+            "Content-Encoding": "identity",
         },
     )
 
