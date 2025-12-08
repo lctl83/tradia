@@ -308,15 +308,23 @@ async def reformulate_text_endpoint(
 
 @app.post("/meeting-summary")
 async def meeting_summary_endpoint(
-    text: str = Form(...),
+    text: str = Form(""),
+    image_base64: Optional[str] = Form(None),
     model: Optional[str] = Form(None),
 ) -> dict[str, object]:
-    """Génère un compte rendu de réunion à partir de notes."""
-    if not text.strip():
-        raise HTTPException(400, "Notes to summarise cannot be empty")
+    """Génère un compte rendu de réunion à partir de notes texte ou d'une image."""
+    has_text = text.strip() if text else False
+    has_image = image_base64 and len(image_base64) > 100
+    
+    if not has_text and not has_image:
+        raise HTTPException(400, "Veuillez fournir des notes texte ou une image")
 
     async with OllamaTranslator() as translator:
-        raw_response = await translator.summarize_meeting(text, model)
+        raw_response = await translator.summarize_meeting(
+            text=text if has_text else None,
+            image_base64=image_base64 if has_image else None,
+            model=model
+        )
 
     if raw_response is None:
         raise HTTPException(502, "Failed to summarise meeting notes with Ollama")
@@ -332,7 +340,7 @@ async def meeting_summary_endpoint(
         action_items = [str(action_items)] if action_items else []
 
     metrics.meeting_summaries += 1
-    logger.log("INFO", "Meeting summary generated", model=model or settings.OLLAMA_MODEL)
+    logger.log("INFO", "Meeting summary generated", model=model or settings.OLLAMA_MODEL, has_image=has_image)
 
     return {
         "summary": summary,

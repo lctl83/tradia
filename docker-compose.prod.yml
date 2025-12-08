@@ -1,0 +1,104 @@
+# docker-compose.prod.yml
+# Configuration optimisée pour serveur DELL PowerEdge R760 avec NVIDIA L40S
+# Usage: docker compose -f docker-compose.prod.yml up -d
+
+services:
+  tradia:
+    build: .
+    container_name: tradia
+    restart: always
+    environment:
+      # Configuration Ollama - ministral (rapide) ou magistral (qualitatif)
+      - OLLAMA_BASE_URL=http://host.docker.internal:11434
+      - OLLAMA_MODEL=ministral-3:latest # Rapide. Alternative: magistral:latest (plus lent mais qualitatif)
+      - OLLAMA_TIMEOUT=300 # Plus long pour les gros modèles
+      - OLLAMA_MAX_RETRIES=5
+      - UVICORN_PORT=8000
+
+      # Configuration
+      - MAX_UPLOAD_MB=100
+      - BATCH_SIZE=20
+
+      # Proxy entreprise
+      - HTTP_PROXY=${HTTP_PROXY:-}
+      - HTTPS_PROXY=${HTTPS_PROXY:-}
+      - NO_PROXY=${NO_PROXY:-localhost,127.0.0.1,host.docker.internal}
+
+      # Logging production
+      - LOG_LEVEL=WARNING
+      - DEBUG=false
+
+    # Accès à Ollama sur l'hôte
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+    # Healthcheck
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:8000/healthz" ]
+      interval: 30s
+      timeout: 15s
+      retries: 5
+      start_period: 30s
+
+    # Ressources optimisées pour Xeon Gold 6526Y (16C/32T) et 256 Go RAM
+    deploy:
+      resources:
+        limits:
+          cpus: '8' # 8 cores pour Tradia (reste pour Ollama/système)
+          memory: 8G # 8 Go RAM suffisant pour l'app web
+        reservations:
+          cpus: '2'
+          memory: 2G
+
+    # Logs de production
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "5"
+
+    ports:
+      - "8000:8000"
+
+    volumes:
+      - ./logs:/app/logs
+
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.tradia.entrypoints=websecure"
+      - "traefik.http.routers.tradia.rule=PathPrefix(`/`)"
+      - "traefik.http.routers.tradia.tls=true"
+      - "traefik.http.routers.tradia.tls.options=default@file"
+      - "traefik.http.services.tradia.loadbalancer.server.port=8000"
+
+  traefik:
+    image: traefik:v3.1
+    container_name: tradia-traefik
+    restart: always
+    depends_on:
+      tradia:
+        condition: service_healthy
+    command:
+      - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=false"
+      - "--providers.file.directory=/etc/traefik/dynamic"
+      - "--providers.file.watch=true"
+      - "--entrypoints.web.address=:80"
+      - "--entrypoints.web.http.redirections.entryPoint.to=websecure"
+      - "--entrypoints.web.http.redirections.entryPoint.scheme=https"
+      - "--entrypoints.websecure.address=:443"
+      - "--log.level=WARN"
+      - "--accesslog=true"
+      - "--accesslog.filepath=/var/log/traefik/access.log"
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./traefik/dynamic:/etc/traefik/dynamic:ro
+      - /etc/ssl/itapprspia:/etc/traefik/certs:ro
+      - ./logs/traefik:/var/log/traefik
+
+networks:
+  default:
+    name: tradia-network

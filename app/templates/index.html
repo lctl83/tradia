@@ -318,6 +318,7 @@
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
             gap: 16px;
+            margin-bottom: 20px;
         }
 
         .summary-section {
@@ -386,6 +387,101 @@
             h1 {
                 font-size: 26px;
             }
+        }
+
+        /* Image upload zone */
+        .image-upload-zone {
+            border: 2px dashed #cbd5e1;
+            border-radius: 8px;
+            padding: 24px;
+            text-align: center;
+            background: #f8fafc;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            margin-bottom: 16px;
+        }
+
+        .image-upload-zone:hover,
+        .image-upload-zone.drag-over {
+            border-color: #2563eb;
+            background: #eff6ff;
+        }
+
+        .image-upload-zone.has-image {
+            border-style: solid;
+            border-color: #22c55e;
+            background: #f0fdf4;
+        }
+
+        .image-upload-icon {
+            font-size: 32px;
+            margin-bottom: 8px;
+        }
+
+        .image-upload-text {
+            color: #64748b;
+            font-size: 14px;
+        }
+
+        .image-upload-text strong {
+            color: #2563eb;
+        }
+
+        .image-preview-container {
+            display: none;
+            position: relative;
+            margin-top: 12px;
+        }
+
+        .image-preview-container.visible {
+            display: block;
+        }
+
+        .image-preview {
+            max-width: 100%;
+            max-height: 200px;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        .image-clear-btn {
+            position: absolute;
+            top: -8px;
+            right: -8px;
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            background: #ef4444;
+            color: white;
+            border: none;
+            cursor: pointer;
+            font-size: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+            transition: transform 0.2s;
+        }
+
+        .image-clear-btn:hover {
+            transform: scale(1.1);
+        }
+
+        .upload-or-text {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 12px;
+            color: #94a3b8;
+            font-size: 13px;
+        }
+
+        .upload-or-text::before,
+        .upload-or-text::after {
+            content: '';
+            flex: 1;
+            height: 1px;
+            background: #e2e8f0;
         }
     </style>
 </head>
@@ -505,7 +601,23 @@
                 <div class="dual-panel">
                     <div class="panel">
                         <label for="summaryInput">Notes de réunion</label>
-                        <textarea id="summaryInput" rows="10" placeholder="Collez vos notes de réunion..."></textarea>
+                        <textarea id="summaryInput" rows="8" placeholder="Collez vos notes de réunion..."></textarea>
+
+                        <div class="upload-or-text">ou importez une photo</div>
+
+                        <div class="image-upload-zone" id="imageUploadZone">
+                            <div class="image-upload-icon">📷</div>
+                            <div class="image-upload-text">
+                                <strong>Cliquez</strong> ou glissez-déposez une image<br>
+                                <small>(photo de notes manuscrites, tableau blanc, etc.)</small>
+                            </div>
+                            <input type="file" id="summaryImageInput" accept="image/*" style="display: none;">
+                            <div class="image-preview-container" id="imagePreviewContainer">
+                                <img id="imagePreview" class="image-preview" alt="Prévisualisation">
+                                <button type="button" class="image-clear-btn" id="imageClearBtn"
+                                    title="Supprimer l'image">✕</button>
+                            </div>
+                        </div>
                     </div>
                     <div class="panel">
                         <div class="panel-header">
@@ -583,6 +695,14 @@
         const summaryActions = document.getElementById('summaryActions');
         const copySummaryBtn = document.getElementById('copySummaryBtn');
 
+        // Image upload elements
+        const imageUploadZone = document.getElementById('imageUploadZone');
+        const summaryImageInput = document.getElementById('summaryImageInput');
+        const imagePreviewContainer = document.getElementById('imagePreviewContainer');
+        const imagePreview = document.getElementById('imagePreview');
+        const imageClearBtn = document.getElementById('imageClearBtn');
+        let summaryImageBase64 = null;
+
         const rtlLanguageSet = new Set(Array.isArray(rtlLanguages) ? rtlLanguages : []);
 
         const submitButtons = {
@@ -644,6 +764,73 @@
             });
             container.appendChild(fragment);
         }
+
+        // Image upload handlers
+        function handleImageFile(file) {
+            if (!file || !file.type.startsWith('image/')) {
+                return;
+            }
+
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const base64Data = e.target.result;
+                // Extract just the base64 part (remove data:image/...;base64, prefix)
+                summaryImageBase64 = base64Data.split(',')[1];
+
+                imagePreview.src = base64Data;
+                imagePreviewContainer.classList.add('visible');
+                imageUploadZone.classList.add('has-image');
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function clearImage() {
+            summaryImageBase64 = null;
+            imagePreview.src = '';
+            imagePreviewContainer.classList.remove('visible');
+            imageUploadZone.classList.remove('has-image');
+            summaryImageInput.value = '';
+        }
+
+        // Click to upload
+        imageUploadZone.addEventListener('click', (e) => {
+            if (e.target === imageClearBtn || e.target.closest('.image-clear-btn')) {
+                return;
+            }
+            summaryImageInput.click();
+        });
+
+        // File input change
+        summaryImageInput.addEventListener('change', (e) => {
+            if (e.target.files && e.target.files[0]) {
+                handleImageFile(e.target.files[0]);
+            }
+        });
+
+        // Clear button
+        imageClearBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            clearImage();
+        });
+
+        // Drag and drop
+        imageUploadZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            imageUploadZone.classList.add('drag-over');
+        });
+
+        imageUploadZone.addEventListener('dragleave', (e) => {
+            e.preventDefault();
+            imageUploadZone.classList.remove('drag-over');
+        });
+
+        imageUploadZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            imageUploadZone.classList.remove('drag-over');
+            if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+                handleImageFile(e.dataTransfer.files[0]);
+            }
+        });
 
         /**
          * Génère un HTML de diff entre le texte original et le texte corrigé.
@@ -883,6 +1070,11 @@
                     case 'summary': {
                         formData.append('text', summaryInput.value);
 
+                        // Include image if uploaded
+                        if (summaryImageBase64) {
+                            formData.append('image_base64', summaryImageBase64);
+                        }
+
                         response = await fetch('/meeting-summary', {
                             method: 'POST',
                             body: formData,
@@ -897,6 +1089,9 @@
                         summaryOutput.value = data.summary || '';
                         renderList(summaryDecisions, data.decisions || []);
                         renderList(summaryActions, data.action_items || []);
+
+                        // Clear image after successful processing
+                        clearImage();
                         break;
                     }
                     default:
@@ -942,6 +1137,22 @@
         setupScrollSync(correctionInput, correctionDiff);
 
         async function loadModels() {
+            // Descriptions des modèles pour aider l'utilisateur
+            const modelDescriptions = {
+                'ministral': '⚡ Le plus rapide',
+                'magistral': '✨ Le plus qualitatif mais plus lent',
+            };
+
+            function getModelLabel(modelName) {
+                const lowerName = modelName.toLowerCase();
+                for (const [key, desc] of Object.entries(modelDescriptions)) {
+                    if (lowerName.includes(key)) {
+                        return `${modelName} - ${desc}`;
+                    }
+                }
+                return modelName;
+            }
+
             try {
                 const response = await fetch('/models');
                 if (!response.ok) {
@@ -967,7 +1178,7 @@
                 uniqueModels.forEach((modelName) => {
                     const option = document.createElement('option');
                     option.value = modelName;
-                    option.textContent = modelName;
+                    option.textContent = getModelLabel(modelName);
                     if (modelName === defaultModel) {
                         option.selected = true;
                     }
@@ -978,7 +1189,7 @@
                 if (!modelSelect.options.length) {
                     const option = document.createElement('option');
                     option.value = fallbackModel;
-                    option.textContent = fallbackModel;
+                    option.textContent = getModelLabel(fallbackModel);
                     modelSelect.appendChild(option);
                 }
             }

@@ -245,23 +245,55 @@ class OllamaTranslator:
 
         return await self._generate(payload)
 
-    async def summarize_meeting(self, text: str, model: Optional[str] = None) -> Optional[str]:
-        """Produit un compte rendu structuré à partir de notes de réunion."""
+    async def summarize_meeting(
+        self,
+        text: Optional[str] = None,
+        image_base64: Optional[str] = None,
+        model: Optional[str] = None
+    ) -> Optional[str]:
+        """Produit un compte rendu structuré à partir de notes de réunion (texte ou image)."""
         if not self.circuit_breaker.can_attempt():
             logger.warning("Circuit breaker OPEN, skipping meeting summary")
             return None
 
-        prompt = (
-            "À partir des notes de réunion suivantes, crée un compte rendu clair. "
-            "Retourne uniquement un JSON respectant la structure :\n"
-            "{\n"
-            '  "summary": "...",\n'
-            '  "decisions": ["..."],\n'
-            '  "action_items": ["..."]\n'
-            "}\n"
-            "Le résumé doit être concis (moins de 150 mots). Les décisions et les actions doivent être formulées en phrases courtes.\n\n"
-            f"Notes de réunion :\n{text}"
-        )
+        # Build prompt based on input type
+        if image_base64 and text:
+            prompt = (
+                "Analyse l'image ET le texte fournis pour créer un compte rendu de réunion. "
+                "L'image peut contenir des notes manuscrites, un tableau blanc, etc. "
+                "Retourne uniquement un JSON respectant la structure :\n"
+                "{\n"
+                '  "summary": "...",\n'
+                '  "decisions": ["..."],\n'
+                '  "action_items": ["..."]\n'
+                "}\n"
+                "Le résumé doit être concis (moins de 150 mots). Les décisions et les actions doivent être formulées en phrases courtes.\n\n"
+                f"Texte additionnel :\n{text}"
+            )
+        elif image_base64:
+            prompt = (
+                "Analyse cette image qui contient des notes de réunion (notes manuscrites, tableau blanc, capture d'écran, etc.). "
+                "Extrait le contenu et crée un compte rendu structuré. "
+                "Retourne uniquement un JSON respectant la structure :\n"
+                "{\n"
+                '  "summary": "...",\n'
+                '  "decisions": ["..."],\n'
+                '  "action_items": ["..."]\n'
+                "}\n"
+                "Le résumé doit être concis (moins de 150 mots). Les décisions et les actions doivent être formulées en phrases courtes."
+            )
+        else:
+            prompt = (
+                "À partir des notes de réunion suivantes, crée un compte rendu clair. "
+                "Retourne uniquement un JSON respectant la structure :\n"
+                "{\n"
+                '  "summary": "...",\n'
+                '  "decisions": ["..."],\n'
+                '  "action_items": ["..."]\n'
+                "}\n"
+                "Le résumé doit être concis (moins de 150 mots). Les décisions et les actions doivent être formulées en phrases courtes.\n\n"
+                f"Notes de réunion :\n{text}"
+            )
 
         payload = {
             "model": model or self.model,
@@ -273,6 +305,10 @@ class OllamaTranslator:
                 "top_p": 0.9,
             },
         }
+
+        # Add image for vision models
+        if image_base64:
+            payload["images"] = [image_base64]
 
         return await self._generate(payload)
 
