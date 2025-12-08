@@ -759,7 +759,20 @@
             const fragment = document.createDocumentFragment();
             items.forEach((item) => {
                 const li = document.createElement('li');
-                li.textContent = item;
+                // Handle both string items and object items (e.g., {change, impact})
+                if (typeof item === 'string') {
+                    li.textContent = item;
+                } else if (typeof item === 'object' && item !== null) {
+                    // Format object fields nicely
+                    const parts = [];
+                    if (item.change) parts.push(item.change);
+                    if (item.impact) parts.push(`Impact: ${item.impact}`);
+                    if (item.text) parts.push(item.text);
+                    if (item.description) parts.push(item.description);
+                    li.textContent = parts.length > 0 ? parts.join(' — ') : JSON.stringify(item);
+                } else {
+                    li.textContent = String(item);
+                }
                 fragment.appendChild(li);
             });
             container.appendChild(fragment);
