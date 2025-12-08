@@ -345,12 +345,57 @@ async def meeting_summary_stream_endpoint(
     )
 
 
+def _sanitize_json_string(text: str) -> str:
+    """Nettoie une chaîne JSON en échappant les caractères de contrôle invalides.
+    
+    Les LLMs retournent parfois des sauts de ligne non échappés dans les valeurs JSON,
+    ce qui provoque des erreurs de parsing.
+    """
+    result = []
+    in_string = False
+    escape_next = False
+    
+    for char in text:
+        if escape_next:
+            result.append(char)
+            escape_next = False
+            continue
+            
+        if char == '\\':
+            result.append(char)
+            escape_next = True
+            continue
+            
+        if char == '"':
+            in_string = not in_string
+            result.append(char)
+            continue
+        
+        # Si on est dans une chaîne, échapper les caractères de contrôle
+        if in_string:
+            if char == '\n':
+                result.append('\\n')
+            elif char == '\r':
+                result.append('\\r')
+            elif char == '\t':
+                result.append('\\t')
+            elif ord(char) < 32:  # Autres caractères de contrôle
+                result.append(f'\\u{ord(char):04x}')
+            else:
+                result.append(char)
+        else:
+            result.append(char)
+    
+    return ''.join(result)
+
+
 def _load_json_payload(raw_payload: str, context: str) -> dict:
     """Charge un payload JSON renvoyé par le modèle.
     
     Nettoie les éventuels blocs markdown (```json ... ```) 
     que certains LLMs ajoutent autour du JSON.
     Gère le cas où le modèle retourne plusieurs blocs JSON.
+    Échappe les caractères de contrôle invalides dans les chaînes.
     """
     # Stratégie 1: Extraire tous les blocs markdown ```json ... ```
     json_blocks = re.findall(r'```json\s*(.*?)\s*```', raw_payload, re.DOTALL)
@@ -358,7 +403,8 @@ def _load_json_payload(raw_payload: str, context: str) -> dict:
     # Essayer chaque bloc JSON en commençant par le dernier (souvent le plus propre)
     for block in reversed(json_blocks):
         try:
-            return json.loads(block.strip())
+            sanitized = _sanitize_json_string(block.strip())
+            return json.loads(sanitized)
         except json.JSONDecodeError:
             continue
     
@@ -401,14 +447,16 @@ def _load_json_payload(raw_payload: str, context: str) -> dict:
                     if depth == 0:
                         candidate = cleaned[brace_start:i+1]
                         try:
-                            return json.loads(candidate)
+                            sanitized = _sanitize_json_string(candidate)
+                            return json.loads(sanitized)
                         except json.JSONDecodeError:
                             break
         brace_start = cleaned.find('{', brace_start + 1)
     
-    # Stratégie 4: Essai direct avec le texte nettoyé
+    # Stratégie 4: Essai direct avec le texte nettoyé et sanitisé
     try:
-        return json.loads(cleaned)
+        sanitized = _sanitize_json_string(cleaned)
+        return json.loads(sanitized)
     except json.JSONDecodeError as exc:
         logger.log(
             "ERROR",
