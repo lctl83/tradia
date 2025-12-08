@@ -4,7 +4,12 @@
 
 services:
   tradia:
-    build: .
+    build:
+      context: .
+      args:
+        - HTTP_PROXY=http://10.10.25.91:8090
+        - HTTPS_PROXY=http://10.10.25.91:8090
+        - NO_PROXY=localhost,127.0.0.1,host.docker.internal
     container_name: tradia
     restart: always
     environment:
