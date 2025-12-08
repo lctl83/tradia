@@ -191,15 +191,26 @@ class OllamaTranslator:
             return None
 
         prompt = (
-            "Corrige l'orthographe et la grammaire du texte ci-dessous.\n\n"
+            "Corrige UNIQUEMENT l'orthographe et la grammaire du texte ci-dessous.\n\n"
+            "INTERDICTIONS ABSOLUES (ne JAMAIS modifier ces éléments):\n"
+            "- Les dates (2025, 5 décembre, etc.) - même si elles te semblent erronées\n"
+            "- Les prix et montants (14,99 €, 9,99 €, etc.)\n"
+            "- Les noms propres de personnes, entreprises, produits\n"
+            "- Les chiffres et statistiques\n"
+            "- Le formatage Markdown (pas de ** ou autres balises)\n\n"
+            "Tu ne corriges QUE:\n"
+            "- Les fautes d'orthographe (accords, conjugaisons)\n"
+            "- Les erreurs de grammaire\n"
+            "- La ponctuation\n\n"
             "Tu DOIS retourner UNIQUEMENT ce JSON (rien d'autre, pas de texte avant ou après):\n"
             '{"corrected_text": "LE TEXTE CORRIGÉ ICI", "explanations": ["explication 1", "explication 2"]}\n\n'
-            "Exemple pour le texte 'Je suis alé au magazin':\n"
-            '{"corrected_text": "Je suis allé au magasin", "explanations": ["alé → allé", "magazin → magasin"]}\n\n'
+            "Exemple pour le texte 'Je suis alé au magazin le 5 décembre 2025':\n"
+            '{"corrected_text": "Je suis allé au magasin le 5 décembre 2025", "explanations": ["alé → allé (accent aigu)", "magazin → magasin (orthographe)"]}\n\n'
             "RÈGLES:\n"
             "- Retourne SEULEMENT le JSON, pas de texte explicatif\n"
             "- Préserve les sauts de ligne avec \\n dans la valeur corrected_text\n"
-            "- Maximum 5 explanations courtes\n\n"
+            "- Maximum 5 explanations courtes\n"
+            "- GARDE les dates, prix et noms EXACTEMENT comme dans l'original\n\n"
             f"Texte à corriger:\n{text}"
         )
 
@@ -439,15 +450,26 @@ class OllamaTranslator:
     ) -> AsyncGenerator[str, None]:
         """Corrige un texte en streaming."""
         prompt = (
-            "Corrige l'orthographe et la grammaire du texte ci-dessous.\n\n"
+            "Corrige UNIQUEMENT l'orthographe et la grammaire du texte ci-dessous.\n\n"
+            "INTERDICTIONS ABSOLUES (ne JAMAIS modifier ces éléments):\n"
+            "- Les dates (2025, 5 décembre, etc.) - même si elles te semblent erronées\n"
+            "- Les prix et montants (14,99 €, 9,99 €, etc.)\n"
+            "- Les noms propres de personnes, entreprises, produits\n"
+            "- Les chiffres et statistiques\n"
+            "- Le formatage Markdown (pas de ** ou autres balises)\n\n"
+            "Tu ne corriges QUE:\n"
+            "- Les fautes d'orthographe (accords, conjugaisons)\n"
+            "- Les erreurs de grammaire\n"
+            "- La ponctuation\n\n"
             "Tu DOIS retourner UNIQUEMENT ce JSON (rien d'autre, pas de texte avant ou après):\n"
             '{"corrected_text": "LE TEXTE CORRIGÉ ICI", "explanations": ["explication 1", "explication 2"]}\n\n'
-            "Exemple pour le texte 'Je suis alé au magazin':\n"
-            '{"corrected_text": "Je suis allé au magasin", "explanations": ["alé → allé", "magazin → magasin"]}\n\n'
+            "Exemple pour le texte 'Je suis alé au magazin le 5 décembre 2025':\n"
+            '{"corrected_text": "Je suis allé au magasin le 5 décembre 2025", "explanations": ["alé → allé (accent aigu)", "magazin → magasin (orthographe)"]}\n\n'
             "RÈGLES:\n"
             "- Retourne SEULEMENT le JSON, pas de texte explicatif\n"
             "- Préserve les sauts de ligne avec \\n dans la valeur corrected_text\n"
-            "- Maximum 5 explanations courtes\n\n"
+            "- Maximum 5 explanations courtes\n"
+            "- GARDE les dates, prix et noms EXACTEMENT comme dans l'original\n\n"
             f"Texte à corriger:\n{text}"
         )
 
