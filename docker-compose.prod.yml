@@ -49,10 +49,10 @@ services:
     deploy:
       resources:
         limits:
-          cpus: '8' # 8 cores pour Tradia (reste pour Ollama/système)
+          cpus: '2' # Ajusté pour machine locale (original: 8 pour serveur DELL)
           memory: 8G # 8 Go RAM suffisant pour l'app web
         reservations:
-          cpus: '2'
+          cpus: '1'
           memory: 2G
 
     # Logs de production
@@ -73,11 +73,10 @@ services:
       - "traefik.http.routers.tradia.entrypoints=websecure"
       - "traefik.http.routers.tradia.rule=PathPrefix(`/`)"
       - "traefik.http.routers.tradia.tls=true"
-      - "traefik.http.routers.tradia.tls.options=default@file"
       - "traefik.http.services.tradia.loadbalancer.server.port=8000"
 
   traefik:
-    image: traefik:v3.1
+    image: traefik:v2.11
     container_name: tradia-traefik
     restart: always
     depends_on:
