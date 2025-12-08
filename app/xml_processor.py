@@ -75,14 +75,14 @@ class XMLProcessor:
                     encoding_end = xml_content.find(b'"', encoding_start)
                     self.original_encoding = xml_content[encoding_start:encoding_end].decode('ascii')
             
-            logger.info(f"XML parsed successfully. Root: {self.root.tag}")
+            logger.info("XML parsed successfully. Root: %s", self.root.tag)
             return True
             
         except etree.XMLSyntaxError as e:
-            logger.error(f"XML syntax error: {e}")
+            logger.error("XML syntax error: %s", e)
             return False
         except Exception as e:
-            logger.error(f"Error parsing XML: {e}")
+            logger.error("Error parsing XML: %s", e)
             return False
     
     def extract_translatable_segments(self) -> List[Tuple[etree._Element, str, str]]:
@@ -131,10 +131,10 @@ class XMLProcessor:
                         segments.append((elem, xpath, text))
                         
             except etree.XPathEvalError as e:
-                logger.warning(f"XPath error for {xpath_expr}: {e}")
+                logger.warning("XPath error for %s: %s", xpath_expr, e)
                 continue
         
-        logger.info(f"Extracted {len(segments)} translatable segments")
+        logger.info("Extracted %d translatable segments", len(segments))
         return segments
     
     def _get_element_xpath(self, element: etree._Element) -> str:
@@ -185,7 +185,7 @@ class XMLProcessor:
             element.text = translated_text
             return True
         except Exception as e:
-            logger.error(f"Error updating segment: {e}")
+            logger.error("Error updating segment: %s", e)
             return False
     
     def update_language(self, target_lang: str) -> None:
@@ -201,7 +201,7 @@ class XMLProcessor:
         # Mettre à jour xml:lang sur la racine
         self.root.set("{http://www.w3.org/XML/1998/namespace}lang", target_lang)
         
-        logger.info(f"Updated xml:lang to {target_lang}")
+        logger.info("Updated xml:lang to %s", target_lang)
     
     def to_bytes(self) -> bytes:
         """
