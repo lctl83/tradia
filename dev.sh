@@ -5,7 +5,7 @@
 
 set -e
 
-echo "🔧 Mode développement - DCIA"
+echo "🔧 Mode développement - IA DCI"
 echo "=========================================="
 echo
 

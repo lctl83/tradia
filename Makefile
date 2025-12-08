@@ -2,10 +2,10 @@
 
 # Variables - Détection automatique de Docker Compose v1 ou v2
 DOCKER_COMPOSE := $(shell docker compose version > /dev/null 2>&1 && echo 'docker compose' || echo 'docker-compose')
-DOCKER_EXEC = $(DOCKER_COMPOSE) exec scenari-translator
+DOCKER_EXEC = $(DOCKER_COMPOSE) exec tradia
 
 help: ## Afficher cette aide
-@echo "DCIA - Commandes disponibles :"
+	@echo "IA DCI - Commandes disponibles :"
 	@echo ""
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-15s\033[0m %s\n", $$1, $$2}'
 

@@ -1,4 +1,4 @@
-"""Tests d'intégration pour DCIA."""
+"""Tests d'intégration pour IA DCI."""
 from unittest.mock import AsyncMock, patch
 
 import pytest
@@ -24,10 +24,10 @@ def _mock_translator(**methods):
 
 
 def test_index_page(client):
-    """La page d'accueil doit mentionner DCIA."""
+    """La page d'accueil doit mentionner IA DCI."""
     response = client.get("/")
     assert response.status_code == 200
-    assert b"DCIA" in response.content
+    assert b"IA DCI" in response.content
 
 
 def test_health_check(client):

@@ -1,4 +1,4 @@
-"""Application FastAPI principale pour DCIA."""
+"""Application FastAPI principale pour IA DCI."""
 from __future__ import annotations
 
 import json
@@ -46,7 +46,7 @@ logger = StructuredLogger(__name__)
 
 # Initialisation FastAPI
 app = FastAPI(
-    title="DCIA",
+    title="IA DCI",
     description=(
         "Suite d'assistants linguistiques internes DCI permettant la traduction, la correction et la génération de comptes rendus."
     ),
@@ -96,7 +96,7 @@ metrics = Metrics()
 
 @app.get("/", response_class=HTMLResponse)
 async def index(request: Request) -> HTMLResponse:
-    """Page d'accueil avec les outils DCIA."""
+    """Page d'accueil avec les outils IA DCI."""
     context = {
         "request": request,
         "languages": settings.SUPPORTED_LANGUAGES,
@@ -122,7 +122,7 @@ async def health_check() -> HealthResponse:
 
 @app.get("/metrics")
 async def get_metrics() -> dict[str, int]:
-    """Retourne les métriques d'utilisation de DCIA."""
+    """Retourne les métriques d'utilisation de IA DCI."""
     return metrics.snapshot()
 
 

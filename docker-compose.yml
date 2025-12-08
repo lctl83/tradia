@@ -1,7 +1,7 @@
 services:
-  scenari-translator:
+  tradia:
     build: .
-    container_name: scenari-translator
+    container_name: tradia
     restart: unless-stopped
     environment:
       # Configuration Ollama
@@ -63,18 +63,18 @@ services:
 
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.scenari.entrypoints=websecure"
-      - "traefik.http.routers.scenari.rule=PathPrefix(`/`)"
-      - "traefik.http.routers.scenari.tls=true"
-      - "traefik.http.routers.scenari.tls.options=default@file"
-      - "traefik.http.services.scenari.loadbalancer.server.port=8000"
+      - "traefik.http.routers.tradia.entrypoints=websecure"
+      - "traefik.http.routers.tradia.rule=PathPrefix(`/`)"
+      - "traefik.http.routers.tradia.tls=true"
+      - "traefik.http.routers.tradia.tls.options=default@file"
+      - "traefik.http.services.tradia.loadbalancer.server.port=8000"
 
   traefik:
     image: traefik:v3.1
-    container_name: scenari-traefik
+    container_name: tradia-traefik
     restart: unless-stopped
     depends_on:
-      - scenari-translator
+      - tradia
     command:
       - "--providers.docker=true"
       - "--providers.docker.exposedbydefault=false"
@@ -95,4 +95,4 @@ services:
 
 networks:
   default:
-    name: scenari-translator-network
+    name: tradia-network

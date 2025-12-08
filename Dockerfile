@@ -2,7 +2,7 @@ FROM python:3.11-slim
 
 # Métadonnées
 LABEL maintainer="Infrastructure DSI"
-LABEL description="DCIA - Suite d'assistants linguistiques via Ollama"
+LABEL description="IA DCI - Suite d'assistants linguistiques via Ollama"
 
 # Variables d'environnement
 ENV PYTHONUNBUFFERED=1 \
@@ -30,21 +30,21 @@ COPY host-proxy.conf /tmp/
 # Dépendances système pour lxml avec détection automatique du proxy + curl pour healthcheck
 RUN set -eux; \
     if [ -f /tmp/host-proxy.conf ] && [ -s /tmp/host-proxy.conf ]; then \
-        cp /tmp/host-proxy.conf /etc/apt/apt.conf.d/01proxy; \
-        echo "✓ Using host proxy configuration"; \
-        cat /etc/apt/apt.conf.d/01proxy; \
-        PROXY_URL=$(grep -oP 'http://[^\"]+' /tmp/host-proxy.conf | head -1); \
-        export HTTP_PROXY="$PROXY_URL"; \
-        export HTTPS_PROXY="$PROXY_URL"; \
-        export http_proxy="$PROXY_URL"; \
-        export https_proxy="$PROXY_URL"; \
-        echo "✓ Proxy configured for pip: $PROXY_URL"; \
+    cp /tmp/host-proxy.conf /etc/apt/apt.conf.d/01proxy; \
+    echo "✓ Using host proxy configuration"; \
+    cat /etc/apt/apt.conf.d/01proxy; \
+    PROXY_URL=$(grep -oP 'http://[^\"]+' /tmp/host-proxy.conf | head -1); \
+    export HTTP_PROXY="$PROXY_URL"; \
+    export HTTPS_PROXY="$PROXY_URL"; \
+    export http_proxy="$PROXY_URL"; \
+    export https_proxy="$PROXY_URL"; \
+    echo "✓ Proxy configured for pip: $PROXY_URL"; \
     elif [ -n "${HTTP_PROXY}" ]; then \
-        echo "Acquire::http::Proxy \"${HTTP_PROXY}\";" >> /etc/apt/apt.conf.d/01proxy; \
-        echo "Acquire::https::Proxy \"${HTTPS_PROXY}\";" >> /etc/apt/apt.conf.d/01proxy; \
-        echo "✓ Using proxy from environment variables"; \
+    echo "Acquire::http::Proxy \"${HTTP_PROXY}\";" >> /etc/apt/apt.conf.d/01proxy; \
+    echo "Acquire::https::Proxy \"${HTTPS_PROXY}\";" >> /etc/apt/apt.conf.d/01proxy; \
+    echo "✓ Using proxy from environment variables"; \
     else \
-        echo "⚠ No proxy configuration found, using direct connection"; \
+    echo "⚠ No proxy configuration found, using direct connection"; \
     fi; \
     apt-get update && \
     apt-get install -y --no-install-recommends \
@@ -58,12 +58,12 @@ RUN set -eux; \
 COPY requirements.txt .
 RUN set -eux; \
     if [ -f /tmp/host-proxy.conf ] && [ -s /tmp/host-proxy.conf ]; then \
-        PROXY_URL=$(grep -oP 'http://[^\"]+' /tmp/host-proxy.conf | head -1); \
-        export HTTP_PROXY="$PROXY_URL"; \
-        export HTTPS_PROXY="$PROXY_URL"; \
-        export http_proxy="$PROXY_URL"; \
-        export https_proxy="$PROXY_URL"; \
-        echo "✓ Installing Python packages via proxy: $PROXY_URL"; \
+    PROXY_URL=$(grep -oP 'http://[^\"]+' /tmp/host-proxy.conf | head -1); \
+    export HTTP_PROXY="$PROXY_URL"; \
+    export HTTPS_PROXY="$PROXY_URL"; \
+    export http_proxy="$PROXY_URL"; \
+    export https_proxy="$PROXY_URL"; \
+    echo "✓ Installing Python packages via proxy: $PROXY_URL"; \
     fi; \
     pip install --no-cache-dir -r requirements.txt && \
     rm -f /tmp/host-proxy.conf

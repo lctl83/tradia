@@ -1,4 +1,4 @@
-# DCIA
+# IA DCI
 
 Suite d'assistants linguistiques internes DCI pour traduire, corriger, reformuler et résumer vos contenus grâce aux modèles Ollama.
 
@@ -40,7 +40,7 @@ ollama pull mistral-small3.2:latest
 
 1. **Cloner ou télécharger le projet** :
 ```bash
-cd scenari-translator
+cd tradia
 ```
 
 2. **Configurer les variables d'environnement** (optionnel) :
@@ -51,13 +51,13 @@ cp .env.example .env
 
 3. **Construire et démarrer l'application** :
 ```bash
-docker-compose up -d --build
+docker compose up -d --build
 ```
 
 4. **Vérifier le déploiement** :
 ```bash
 # Vérifier les logs
-docker-compose logs -f
+docker compose logs -f
 
 # Tester le healthcheck (via Traefik)
 curl -k https://localhost/healthz
@@ -73,13 +73,13 @@ Les certificats TLS attendus par Traefik sont montés depuis l'hôte :
 - Dossier hôte : `/etc/ssl/itapprspia`
 - Fichiers requis : `itapprspia.cer` et `itapprspia.key`
 
-Ces fichiers sont exposés dans le conteneur Traefik sous `/etc/traefik/certs`, conformément au `docker-compose.yml`.
+Ces fichiers sont exposés dans le conteneur Traefik sous `/etc/traefik/certs`, conformément au `docker compose.yml`.
 
 ### Déploiement sur un serveur distant
 
 Si vous déployez sur un serveur différent de celui hébergeant Ollama :
 
-1. **Modifier l'URL d'Ollama dans docker-compose.yml** :
+1. **Modifier l'URL d'Ollama dans docker compose.yml** :
 ```yaml
 environment:
   - OLLAMA_BASE_URL=http://IP_SERVEUR_OLLAMA:11434
@@ -170,10 +170,10 @@ curl -k https://localhost/metrics
 Réponse :
 ```json
 {
-  "total_translations": 42,
-  "total_segments_translated": 1250,
-  "total_segments_failed": 3,
-  "average_duration": 45.2
+  "text_translations": 10,
+  "corrections": 5,
+  "reformulations": 3,
+  "meeting_summaries": 2
 }
 ```
 
@@ -183,10 +183,10 @@ Les logs sont structurés en JSON pour faciliter l'analyse :
 
 ```bash
 # Voir les logs en temps réel
-docker-compose logs -f scenari-translator
+docker compose logs -f tradia
 
 # Filtrer par niveau
-docker-compose logs scenari-translator | grep ERROR
+docker compose logs tradia | grep ERROR
 ```
 
 ## 🧪 Tests
@@ -195,13 +195,13 @@ docker-compose logs scenari-translator | grep ERROR
 
 ```bash
 # Dans le conteneur
-docker-compose exec scenari-translator pytest
+docker compose exec tradia pytest
 
 # Avec coverage
-docker-compose exec scenari-translator pytest --cov=app --cov-report=html
+docker compose exec tradia pytest --cov=app --cov-report=html
 
 # Tests spécifiques
-docker-compose exec scenari-translator pytest tests/test_xml_processor.py -v
+docker compose exec tradia pytest tests/ -v
 ```
 
 ### Tests locaux (sans Docker)
@@ -226,23 +226,23 @@ pytest
 
 ```bash
 # Arrêter l'application
-docker-compose down
+docker compose down
 
 # Mettre à jour le code
 git pull  # si vous utilisez git
 
 # Reconstruire et redémarrer
-docker-compose up -d --build
+docker compose up -d --build
 ```
 
 ### Vérifier l'état
 
 ```bash
 # État des conteneurs
-docker-compose ps
+docker compose ps
 
 # Utilisation des ressources
-docker stats scenari-translator
+docker stats tradia
 
 # Espace disque
 docker system df
@@ -252,10 +252,10 @@ docker system df
 
 ```bash
 # Arrêter et supprimer les conteneurs
-docker-compose down
+docker compose down
 
 # Supprimer les volumes (si créés)
-docker-compose down -v
+docker compose down -v
 
 # Nettoyer les images inutilisées
 docker image prune -a
@@ -280,15 +280,15 @@ curl http://localhost:11434/api/tags
 
 ```bash
 # Vérifier les logs
-docker-compose logs scenari-translator
+docker compose logs tradia
 
 # Vérifier la configuration
-docker-compose config
+docker compose config
 
 # Reconstruire depuis zéro
-docker-compose down
-docker-compose build --no-cache
-docker-compose up -d
+docker compose down
+docker compose build --no-cache
+docker compose up -d
 ```
 
 ### Erreur de traduction
@@ -321,32 +321,10 @@ BATCH_SIZE=5
 ### Stack technologique
 
 - **Backend** : FastAPI + Uvicorn
-- **XML** : lxml (préservation stricte)
 - **HTTP** : httpx (avec retries)
 - **Templating** : Jinja2
 - **Tests** : pytest
 - **Conteneurisation** : Docker
-
-### Flux de traduction
-
-```
-1. Upload XML → Validation MIME type et taille
-2. Parsing XML → lxml avec préservation complète
-3. Extraction → Segments traduisibles (sc:para, sc:title, etc.)
-4. Traduction → Ollama avec retries exponentiels
-5. Réinjection → Mise à jour des nœuds + xml:lang
-6. Génération → XML avec structure préservée
-7. Download → Fichier .xml avec rapport en header
-```
-
-### Caractéristiques du processeur XML
-
-- ✅ Préserve tous les namespaces
-- ✅ Préserve les commentaires et PI
-- ✅ Préserve l'ordre des attributs
-- ✅ Ne touche pas aux éléments code/math/ref
-- ✅ Ignore les éléments vides
-- ✅ Génère des XPath uniques pour chaque segment
 
 ### Robustesse du client Ollama
 
@@ -354,7 +332,7 @@ BATCH_SIZE=5
 - ✅ Circuit breaker (arrêt après 5 échecs)
 - ✅ Timeout configurable
 - ✅ Support proxy
-- ✅ Logs structurés par segment
+- ✅ Logs structurés JSON
 
 ## 📝 Licence
 
@@ -364,22 +342,19 @@ Ce projet est développé pour un usage interne DSI.
 
 Pour toute question ou problème :
 1. Consulter cette documentation
-2. Vérifier les logs : `docker-compose logs`
+2. Vérifier les logs : `docker compose logs`
 3. Tester le healthcheck : `curl -k https://localhost/healthz`
 4. Contacter l'équipe infrastructure DSI
 
 ## 🔄 Roadmap
 
-- [ ] Support de fichiers ZIP multiples
-- [ ] Export du rapport en JSON/CSV
 - [ ] Interface d'administration
 - [ ] Authentification LDAP/SSO
 - [ ] API REST documentée (Swagger)
 - [ ] Traductions en cache (Redis)
-- [ ] Support de plus de formats (DocBook, DITA)
 
 ---
 
-**Version** : 1.0.0  
-**Dernière mise à jour** : 2025-01-XX  
+**Version** : 2.0.0  
+**Dernière mise à jour** : 2025-12-08  
 **Responsable** : Infrastructure DSI

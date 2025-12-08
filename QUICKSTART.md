@@ -1,4 +1,4 @@
-# 🚀 Guide de démarrage rapide
+# 🚀 Guide de démarrage rapide - Tradia
 
 ## Installation en 3 étapes
 
@@ -21,7 +21,7 @@ curl http://localhost:11434/api/tags
 
 **Option B : Manuellement**
 ```bash
-docker-compose up -d --build
+docker compose up -d --build
 ```
 
 **Option C : Avec Make**
@@ -33,23 +33,33 @@ make deploy
 
 Ouvrir : **http://localhost:8000**
 
+## Fonctionnalités disponibles
+
+- **📝 Traduction** : FR ↔ EN ↔ AR
+- **✅ Correction** : Orthographe et grammaire avec explications
+- **♻️ Reformulation** : Amélioration du style et de la clarté
+- **🗂️ Compte rendu** : Génération de résumés de réunion
+
 ## Commandes rapides
 
 ```bash
 # Voir les logs
-docker-compose logs -f
+docker compose logs -f tradia
 
 # Arrêter
-docker-compose down
+docker compose down
 
 # Redémarrer
-docker-compose restart
+docker compose restart tradia
 
 # Vérifier la santé
 curl http://localhost:8000/healthz
 
 # Voir les métriques
 curl http://localhost:8000/metrics
+
+# Liste des modèles Ollama
+curl http://localhost:8000/models
 ```
 
 ## Résolution de problèmes rapide
@@ -68,12 +78,12 @@ curl http://localhost:11434/api/tags
 
 ```bash
 # Voir les logs
-docker-compose logs
+docker compose logs tradia
 
 # Reconstruire
-docker-compose down
-docker-compose build --no-cache
-docker-compose up -d
+docker compose down
+docker compose build --no-cache
+docker compose up -d
 ```
 
 ### Port 8000 déjà utilisé
@@ -89,24 +99,23 @@ ports:
 Créer un fichier `.env` :
 ```bash
 OLLAMA_BASE_URL=http://localhost:11434
-OLLAMA_MODEL=mistral-small3.2:latest
-MAX_UPLOAD_MB=50
+OLLAMA_MODEL=llama3.2:1b
 ```
 
 ## Test rapide
 
-1. Téléverser le fichier `example.xml`
-2. Sélectionner FR → EN
-3. Cliquer sur "Traduire"
-4. Télécharger le résultat
+1. Ouvrir http://localhost:8000
+2. Écrire du texte dans la zone de saisie
+3. Cliquer sur "⚡ Traduire" (ou autre bouton selon l'onglet)
+4. Copier le résultat avec le bouton "📋 Copier"
 
 ## Support
 
 - 📖 Documentation complète : voir `README.md`
-- 🐛 Problème ? Vérifier les logs : `docker-compose logs -f`
+- 🐛 Problème ? Vérifier les logs : `docker compose logs -f tradia`
 - 💡 Questions ? Contacter l'équipe infrastructure DSI
 
 ---
 
 **Temps de déploiement** : < 5 minutes  
-**Temps de première traduction** : < 2 minutes
+**Temps de première utilisation** : < 1 minute

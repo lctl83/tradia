@@ -5,16 +5,36 @@ Toutes les modifications notables de ce projet seront documentées dans ce fichi
 Le format est basé sur [Keep a Changelog](https://keepachangelog.com/fr/1.0.0/),
 et ce projet adhère au [Semantic Versioning](https://semver.org/lang/fr/).
 
-## [1.0.0] - 2025-01-XX
+## [2.0.0] - 2025-12-08
+
+### Ajouté
+- Correction orthographique avec explications détaillées
+- Reformulation professionnelle avec points clés
+- Génération de comptes rendus de réunion structurés
+- Surlignage visuel des différences (diff) dans la correction
+- Synchronisation des scrollbars entre panneaux
+- Sélection dynamique du modèle Ollama
+
+### Modifié
+- Renommage du projet : DCIA → IA DCI / Tradia
+- Renommage des services Docker : scenari-translator → tradia
+- Interface utilisateur simplifiée et épurée
+- Suppression des références SCENARI/XML
+
+### Supprimé
+- Fonctionnalité de traduction XML SCENARI
+- Fichier exemple XML
+- Module xml_processor.py
+
+## [1.0.0] - 2025-01
 
 ### Ajouté
 - Interface web responsive avec support RTL pour l'arabe
 - Support de traduction multilingue (FR, EN, AR)
-- Processeur XML avec préservation stricte de la structure
 - Client Ollama avec retries exponentiels et circuit breaker
 - API REST avec FastAPI
 - Logging structuré en JSON
-- Métriques de performance (segments traduits, durée, échecs)
+- Métriques de performance
 - Endpoint de healthcheck
 - Tests unitaires et d'intégration
 - Déploiement Docker avec docker-compose
@@ -22,34 +42,25 @@ et ce projet adhère au [Semantic Versioning](https://semver.org/lang/fr/).
 - Scripts de démarrage automatique (start.sh, dev.sh)
 - Makefile pour automatisation
 - Script de monitoring (monitor.py)
-- Fichier exemple XML SCENARI
 - Support des variables d'environnement
 - Configuration proxy HTTP/HTTPS
-- Gestion des timeouts et batch size configurables
-- Rapport de traduction détaillé en header HTTP
+- Gestion des timeouts configurables
 
 ### Fonctionnalités
-- ✅ Traduction de fichiers XML SCENARI
-- ✅ Préservation des namespaces, attributs, commentaires
-- ✅ Détection automatique des segments traduisibles
-- ✅ Mise à jour automatique de xml:lang
-- ✅ Aucune persistance (traitement en mémoire)
-- ✅ Téléchargement direct du fichier traduit
+- ✅ Traduction de texte brut
 - ✅ Interface intuitive en français
 - ✅ Support complet de l'arabe (RTL)
 - ✅ Validation des entrées
 - ✅ Gestion des erreurs robuste
+- ✅ Aucune persistance (traitement en mémoire)
 
 ### Sécurité
-- Validation stricte des types MIME
-- Limitation de taille d'upload
 - Utilisateur non-root dans Docker
 - Pas de stockage persistant
 - Validation des langues supportées
 
 ### Performance
 - Circuit breaker pour éviter surcharge Ollama
-- Batching configurable
 - Retries avec backoff exponentiel
 - Timeouts configurables
 - Healthcheck intégré
@@ -57,27 +68,18 @@ et ce projet adhère au [Semantic Versioning](https://semver.org/lang/fr/).
 ## [Non publié]
 
 ### À venir
-- Support de fichiers ZIP multiples
-- Export du rapport en JSON/CSV
 - Interface d'administration
 - Authentification LDAP/SSO
 - API REST documentée (Swagger)
 - Cache de traductions (Redis)
-- Support de plus de formats (DocBook, DITA)
 - Métriques Prometheus
-- Gestion de files d'attente (Celery)
-- Mode asynchrone pour gros fichiers
-- Notifications email de fin de traduction
 
 ### En cours d'étude
 - Support de plus de langues
 - Intégration avec d'autres LLM
-- Mode de révision/correction
 - Historique des traductions
-- Comparaison de versions
 - API de webhook
 - Client CLI
-- Plugin pour éditeurs SCENARI
 
 ---
 

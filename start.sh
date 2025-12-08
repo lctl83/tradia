@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Script de démarrage rapide pour DCIA
+# Script de démarrage rapide pour IA DCI
 # Usage: ./start.sh [options]
 
 set -euo pipefail
@@ -95,7 +95,7 @@ load_proxy_from_apt
 echo -e "${BLUE}"
 cat << "EOF"
 ╔═══════════════════════════════════════════╗
-║           DCIA Deployment                 ║
+║           IA DCI Deployment               ║
 ║          FastAPI + Ollama                 ║
 ╚═══════════════════════════════════════════╝
 EOF

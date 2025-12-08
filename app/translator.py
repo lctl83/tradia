@@ -1,4 +1,4 @@
-"""Client Ollama asynchrone pour DCIA."""
+"""Client Ollama asynchrone pour IA DCI."""
 from __future__ import annotations
 
 import asyncio

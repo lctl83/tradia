@@ -1,4 +1,4 @@
-"""Configuration de l'application DCIA."""
+"""Configuration de l'application IA DCI."""
 import os
 from typing import Optional
 

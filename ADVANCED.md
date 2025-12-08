@@ -24,7 +24,7 @@
 
 **Configuration** :
 ```yaml
-# docker-compose.yml
+# docker compose.yml
 environment:
   - OLLAMA_BASE_URL=http://localhost:11434
 ```
@@ -198,7 +198,7 @@ watch -n 1 'ps aux | grep ollama'
 ### 1. Augmenter les ressources Docker
 
 ```yaml
-# docker-compose.yml
+# docker compose.yml
 deploy:
   resources:
     limits:
@@ -249,7 +249,7 @@ OLLAMA_MODEL=llama3:70b
 ### 1. Réseau Docker isolé
 
 ```yaml
-# docker-compose.yml
+# docker compose.yml
 networks:
   translator-net:
     driver: bridge
@@ -316,12 +316,12 @@ async def prometheus_metrics():
 ### 2. Centralisation des logs (ELK Stack)
 
 ```yaml
-# docker-compose.yml
+# docker compose.yml
 logging:
   driver: "syslog"
   options:
     syslog-address: "tcp://logstash:5000"
-    tag: "scenari-translator"
+    tag: "tradia"
 ```
 
 ### 3. Alerting
@@ -335,7 +335,7 @@ logging:
 
 ```bash
 # Crontab
-0 2 * * * docker-compose -f /path/to/docker-compose.yml logs > /backup/logs-$(date +\%Y\%m\%d).txt
+0 2 * * * docker compose -f /path/to/docker compose.yml logs > /backup/logs-$(date +\%Y\%m\%d).txt
 ```
 
 ---
@@ -345,12 +345,12 @@ logging:
 ### Avec Docker Swarm
 
 ```yaml
-# docker-compose-swarm.yml
+# docker compose-swarm.yml
 version: '3.8'
 
 services:
   translator:
-    image: scenari-translator:latest
+    image: tradia:latest
     deploy:
       replicas: 3
       update_config:
@@ -363,7 +363,7 @@ services:
 
 **Déployer** :
 ```bash
-docker stack deploy -c docker-compose-swarm.yml translator
+docker stack deploy -c docker compose-swarm.yml translator
 ```
 
 ### Load balancing avec Nginx
@@ -388,10 +388,10 @@ upstream translator_cluster {
 git pull
 
 # 2. Reconstruire
-docker-compose build
+docker compose build
 
 # 3. Déploiement progressif
-docker-compose up -d --no-deps --build translator
+docker compose up -d --no-deps --build translator
 
 # 4. Vérifier
 curl http://localhost:8000/healthz
@@ -444,13 +444,13 @@ systemctl start ollama
 
 ```bash
 # Monitorer
-docker stats scenari-translator
+docker stats tradia
 
 # Redémarrer si nécessaire
-docker-compose restart
+docker compose restart
 
 # Limiter la mémoire
-docker update --memory 2G --memory-swap 2G scenari-translator
+docker update --memory 2G --memory-swap 2G tradia
 ```
 
 ### Performance GPU

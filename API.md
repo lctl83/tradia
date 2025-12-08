@@ -1,4 +1,4 @@
-# Documentation de l'API DCIA
+# Documentation de l'API IA DCI
 
 ## Endpoints disponibles
 
@@ -6,7 +6,7 @@
 
 **GET /**
 
-Affiche l'interface web des assistants DCIA.
+Affiche l'interface web des assistants IA DCI.
 
 **Réponse** : Page HTML
 

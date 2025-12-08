@@ -1,1 +1,1 @@
-"""Tests pour DCIA."""
+"""Tests pour IA DCI."""

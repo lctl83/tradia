@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Script de monitoring pour DCIA."""
+"""Script de monitoring pour IA DCI."""
 
 import sys
 import json
@@ -27,7 +27,7 @@ def check_endpoint(url: str, name: str) -> tuple[bool, str]:
 def main():
     """Fonction principale."""
     print("=" * 60)
-    print("   DCIA - Health Check")
+    print("   IA DCI - Health Check")
     print("=" * 60)
     print(f"Time: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
     print()
