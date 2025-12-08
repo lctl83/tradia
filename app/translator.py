@@ -59,29 +59,34 @@ class OllamaTranslator:
 
     SYSTEM_PROMPTS: Dict[tuple[str, str], str] = {
         ("fr", "en"): (
-            "You are a translator. Translate the following French text to English. "
-            "Return ONLY the translated text, without any explanation, formatting, or additional content. "
-            "Preserve punctuation and tone."
+            "You are a French to English translator. "
+            "Translate the user's French text into English. "
+            "Output ONLY the English translation. No explanations, no original text, no extra words."
         ),
         ("fr", "ar"): (
-            "أنت مترجم. ترجم النص الفرنسي التالي إلى العربية. أعد النص المترجم فقط، دون أي تفسير أو تنسيق أو محتوى إضافي. "
-            "احتفظ بعلامات الترقيم والنبرة."
+            "أنت مترجم من الفرنسية إلى العربية. "
+            "ترجم النص الفرنسي إلى العربية. "
+            "أخرج الترجمة العربية فقط. لا تفسيرات، لا نص أصلي، لا كلمات إضافية."
         ),
         ("en", "fr"): (
-            "Tu es un traducteur. Traduis le texte anglais suivant en français. Retourne UNIQUEMENT le texte traduit, "
-            "sans explication, formatage ou contenu additionnel. Préserve la ponctuation et le ton."
+            "Tu es un traducteur anglais vers français. "
+            "Traduis le texte anglais de l'utilisateur en français. "
+            "Retourne UNIQUEMENT la traduction française. Pas d'explications, pas de texte original, pas de mots supplémentaires."
         ),
         ("en", "ar"): (
-            "أنت مترجم. ترجم النص الإنجليزي التالي إلى العربية. أعد النص المترجم فقط، دون أي تفسير أو تنسيق أو محتوى إضافي. "
-            "احتفظ بعلامات الترقيم والنبرة."
+            "أنت مترجم من الإنجليزية إلى العربية. "
+            "ترجم النص الإنجليزي إلى العربية. "
+            "أخرج الترجمة العربية فقط. لا تفسيرات، لا نص أصلي، لا كلمات إضافية."
         ),
         ("ar", "fr"): (
-            "Tu es un traducteur. Traduis le texte arabe suivant en français. Retourne UNIQUEMENT le texte traduit, sans explication, "
-            "formatage ou contenu additionnel. Préserve la ponctuation et le ton."
+            "Tu es un traducteur arabe vers français. "
+            "Traduis le texte arabe de l'utilisateur en français. "
+            "Retourne UNIQUEMENT la traduction française. Pas d'explications, pas de texte original, pas de mots supplémentaires."
         ),
         ("ar", "en"): (
-            "You are a translator. Translate the following Arabic text to English. Return ONLY the translated text, "
-            "without any explanation, formatting, or additional content. Preserve punctuation and tone."
+            "You are an Arabic to English translator. "
+            "Translate the user's Arabic text into English. "
+            "Output ONLY the English translation. No explanations, no original text, no extra words."
         ),
     }
 
@@ -185,25 +190,25 @@ class OllamaTranslator:
             return None
 
         prompt = (
-            "Tu es un correcteur professionnel. Corrige le texte suivant en respectant la langue d'origine et le ton employé. "
-            "Retourne exclusivement un objet JSON respectant exactement cette structure :\n"
-            "{\n"
-            '  "corrected_text": "...",\n'
-            '  "explanations": ["..."]\n'
-            "}\n"
-            "La clé 'corrected_text' doit contenir le texte intégralement corrigé. "
-            "La clé 'explanations' doit être une liste décrivant brièvement chaque correction importante. "
-            "Indique qu'aucune correction n'a été nécessaire si le texte est déjà correct.\n\n"
-            f"Texte à corriger :\n{text}"
+            "Corrige l'orthographe et la grammaire du texte ci-dessous.\n\n"
+            "Tu DOIS retourner UNIQUEMENT ce JSON (rien d'autre, pas de texte avant ou après):\n"
+            '{"corrected_text": "LE TEXTE CORRIGÉ ICI", "explanations": ["explication 1", "explication 2"]}\n\n'
+            "Exemple pour le texte 'Je suis alé au magazin':\n"
+            '{"corrected_text": "Je suis allé au magasin", "explanations": ["alé → allé", "magazin → magasin"]}\n\n'
+            "RÈGLES:\n"
+            "- Retourne SEULEMENT le JSON, pas de texte explicatif\n"
+            "- Préserve les sauts de ligne avec \\n dans la valeur corrected_text\n"
+            "- Maximum 5 explanations courtes\n\n"
+            f"Texte à corriger:\n{text}"
         )
 
         payload = {
             "model": model or self.model,
             "prompt": prompt,
-            "system": "Tu es un correcteur orthographique et grammatical interne à DCI. Retourne uniquement du JSON valide.",
+            "system": "Tu es un correcteur. Réponds UNIQUEMENT avec un objet JSON valide, rien d'autre.",
             "stream": False,
             "options": {
-                "temperature": 0.2,
+                "temperature": 0.0,
                 "top_p": 0.9,
             },
         }

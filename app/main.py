@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import json
 import logging
+import re
 import time
 from pathlib import Path
 from typing import Optional
@@ -169,16 +170,76 @@ async def translate_text_endpoint(
 
 
 def _load_json_payload(raw_payload: str, context: str) -> dict:
-    """Charge un payload JSON renvoyé par le modèle."""
+    """Charge un payload JSON renvoyé par le modèle.
+    
+    Nettoie les éventuels blocs markdown (```json ... ```) 
+    que certains LLMs ajoutent autour du JSON.
+    Gère le cas où le modèle retourne plusieurs blocs JSON.
+    """
+    # Stratégie 1: Extraire tous les blocs markdown ```json ... ```
+    json_blocks = re.findall(r'```json\s*(.*?)\s*```', raw_payload, re.DOTALL)
+    
+    # Essayer chaque bloc JSON en commençant par le dernier (souvent le plus propre)
+    for block in reversed(json_blocks):
+        try:
+            return json.loads(block.strip())
+        except json.JSONDecodeError:
+            continue
+    
+    # Stratégie 2: Nettoyer le payload brut si pas de bloc markdown valide
+    cleaned = raw_payload.strip()
+    
+    # Retirer ```json ou ``` au début
+    if cleaned.startswith("```json"):
+        cleaned = cleaned[7:]
+    elif cleaned.startswith("```"):
+        cleaned = cleaned[3:]
+    
+    # Retirer ``` à la fin
+    if cleaned.endswith("```"):
+        cleaned = cleaned[:-3]
+    
+    cleaned = cleaned.strip()
+    
+    # Stratégie 3: Chercher le premier objet JSON valide dans le texte
+    # Trouver toutes les occurrences potentielles de JSON ({...})
+    brace_start = cleaned.find('{')
+    while brace_start != -1:
+        depth = 0
+        in_string = False
+        escape_next = False
+        for i, char in enumerate(cleaned[brace_start:], brace_start):
+            if escape_next:
+                escape_next = False
+                continue
+            if char == '\\':
+                escape_next = True
+                continue
+            if char == '"' and not escape_next:
+                in_string = not in_string
+            elif not in_string:
+                if char == '{':
+                    depth += 1
+                elif char == '}':
+                    depth -= 1
+                    if depth == 0:
+                        candidate = cleaned[brace_start:i+1]
+                        try:
+                            return json.loads(candidate)
+                        except json.JSONDecodeError:
+                            break
+        brace_start = cleaned.find('{', brace_start + 1)
+    
+    # Stratégie 4: Essai direct avec le texte nettoyé
     try:
-        return json.loads(raw_payload)
-    except json.JSONDecodeError as exc:  # pragma: no cover - log path
+        return json.loads(cleaned)
+    except json.JSONDecodeError as exc:
         logger.log(
             "ERROR",
             "Invalid JSON payload received",
             context=context,
             error=str(exc),
-            payload=raw_payload,
+            payload=raw_payload[:500] + "..." if len(raw_payload) > 500 else raw_payload,
         )
         raise HTTPException(502, "Réponse du modèle invalide") from exc
 
