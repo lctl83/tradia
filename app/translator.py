@@ -2,9 +2,10 @@
 from __future__ import annotations
 
 import asyncio
+import json
 import logging
 import time
-from typing import Dict, List, Optional
+from typing import AsyncGenerator, Dict, List, Optional
 
 import httpx
 
@@ -363,3 +364,193 @@ class OllamaTranslator:
 
         self.circuit_breaker.call_failed()
         return None
+
+    async def _generate_stream(
+        self, payload: Dict[str, object]
+    ) -> AsyncGenerator[str, None]:
+        """Génère les tokens en streaming via Ollama."""
+        if not self.circuit_breaker.can_attempt():
+            logger.warning("Circuit breaker OPEN, skipping streaming request")
+            return
+
+        payload["stream"] = True
+
+        try:
+            async with self.client.stream(
+                "POST",
+                f"{self.base_url}/api/generate",
+                json=payload,
+                timeout=self.timeout,
+            ) as response:
+                if response.status_code != 200:
+                    logger.error("Ollama streaming returned status %s", response.status_code)
+                    return
+
+                async for line in response.aiter_lines():
+                    if not line:
+                        continue
+                    try:
+                        data = json.loads(line)
+                        token = data.get("response", "")
+                        if token:
+                            yield token
+                        if data.get("done"):
+                            self.circuit_breaker.call_succeeded()
+                            break
+                    except json.JSONDecodeError:
+                        logger.warning("Invalid JSON in stream: %s", line[:100])
+                        continue
+
+        except httpx.TimeoutException:
+            logger.warning("Timeout during streaming")
+            self.circuit_breaker.call_failed()
+        except Exception as exc:
+            logger.error("Error during streaming: %s", exc)
+            self.circuit_breaker.call_failed()
+
+    async def translate_text_stream(
+        self,
+        text: str,
+        source_lang: str,
+        target_lang: str,
+        model: Optional[str] = None,
+    ) -> AsyncGenerator[str, None]:
+        """Traduit un texte via Ollama en streaming."""
+        system_prompt = self.SYSTEM_PROMPTS.get((source_lang, target_lang))
+        if not system_prompt:
+            logger.error("No system prompt for %s -> %s", source_lang, target_lang)
+            return
+
+        payload = {
+            "model": model or self.model,
+            "prompt": text,
+            "system": system_prompt,
+            "options": {
+                "temperature": 0.3,
+                "top_p": 0.9,
+            },
+        }
+
+        async for token in self._generate_stream(payload):
+            yield token
+
+    async def correct_text_stream(
+        self, text: str, model: Optional[str] = None
+    ) -> AsyncGenerator[str, None]:
+        """Corrige un texte en streaming."""
+        prompt = (
+            "Corrige l'orthographe et la grammaire du texte ci-dessous.\n\n"
+            "Tu DOIS retourner UNIQUEMENT ce JSON (rien d'autre, pas de texte avant ou après):\n"
+            '{"corrected_text": "LE TEXTE CORRIGÉ ICI", "explanations": ["explication 1", "explication 2"]}\n\n'
+            "Exemple pour le texte 'Je suis alé au magazin':\n"
+            '{"corrected_text": "Je suis allé au magasin", "explanations": ["alé → allé", "magazin → magasin"]}\n\n'
+            "RÈGLES:\n"
+            "- Retourne SEULEMENT le JSON, pas de texte explicatif\n"
+            "- Préserve les sauts de ligne avec \\n dans la valeur corrected_text\n"
+            "- Maximum 5 explanations courtes\n\n"
+            f"Texte à corriger:\n{text}"
+        )
+
+        payload = {
+            "model": model or self.model,
+            "prompt": prompt,
+            "system": "Tu es un correcteur. Réponds UNIQUEMENT avec un objet JSON valide, rien d'autre.",
+            "options": {
+                "temperature": 0.0,
+                "top_p": 0.9,
+            },
+        }
+
+        async for token in self._generate_stream(payload):
+            yield token
+
+    async def reformulate_text_stream(
+        self, text: str, model: Optional[str] = None
+    ) -> AsyncGenerator[str, None]:
+        """Reformule un texte en streaming."""
+        prompt = (
+            "Tu es chargé de reformuler le texte suivant pour l'améliorer (fluidité, clarté, ton professionnel) tout en conservant le sens. "
+            "Retourne exclusivement un objet JSON avec la structure :\n"
+            "{\n"
+            '  "reformulated_text": "...",\n'
+            '  "highlights": ["..."]\n'
+            "}\n"
+            "La liste 'highlights' doit contenir quelques explications sur les changements importants.\n\n"
+            f"Texte à reformuler :\n{text}"
+        )
+
+        payload = {
+            "model": model or self.model,
+            "prompt": prompt,
+            "system": "Tu es un assistant de rédaction interne à DCI. Fournis uniquement du JSON valide.",
+            "options": {
+                "temperature": 0.4,
+                "top_p": 0.9,
+            },
+        }
+
+        async for token in self._generate_stream(payload):
+            yield token
+
+    async def summarize_meeting_stream(
+        self,
+        text: Optional[str] = None,
+        image_base64: Optional[str] = None,
+        model: Optional[str] = None,
+    ) -> AsyncGenerator[str, None]:
+        """Produit un compte rendu en streaming."""
+        # Build prompt based on input type
+        if image_base64 and text:
+            prompt = (
+                "Analyse l'image ET le texte fournis pour créer un compte rendu de réunion. "
+                "L'image peut contenir des notes manuscrites, un tableau blanc, etc. "
+                "Retourne uniquement un JSON respectant la structure :\n"
+                "{\n"
+                '  "summary": "...",\n'
+                '  "decisions": ["..."],\n'
+                '  "action_items": ["..."]\n'
+                "}\n"
+                "Le résumé doit être concis (moins de 150 mots). Les décisions et les actions doivent être formulées en phrases courtes.\n\n"
+                f"Texte additionnel :\n{text}"
+            )
+        elif image_base64:
+            prompt = (
+                "Analyse cette image qui contient des notes de réunion (notes manuscrites, tableau blanc, capture d'écran, etc.). "
+                "Extrait le contenu et crée un compte rendu structuré. "
+                "Retourne uniquement un JSON respectant la structure :\n"
+                "{\n"
+                '  "summary": "...",\n'
+                '  "decisions": ["..."],\n'
+                '  "action_items": ["..."]\n'
+                "}\n"
+                "Le résumé doit être concis (moins de 150 mots). Les décisions et les actions doivent être formulées en phrases courtes."
+            )
+        else:
+            prompt = (
+                "À partir des notes de réunion suivantes, crée un compte rendu clair. "
+                "Retourne uniquement un JSON respectant la structure :\n"
+                "{\n"
+                '  "summary": "...",\n'
+                '  "decisions": ["..."],\n'
+                '  "action_items": ["..."]\n'
+                "}\n"
+                "Le résumé doit être concis (moins de 150 mots). Les décisions et les actions doivent être formulées en phrases courtes.\n\n"
+                f"Notes de réunion :\n{text}"
+            )
+
+        payload = {
+            "model": model or self.model,
+            "prompt": prompt,
+            "system": "Tu es l'assistant de compte rendu interne à DCI. Réponds uniquement avec du JSON valide.",
+            "options": {
+                "temperature": 0.3,
+                "top_p": 0.9,
+            },
+        }
+
+        # Add image for vision models
+        if image_base64:
+            payload["images"] = [image_base64]
+
+        async for token in self._generate_stream(payload):
+            yield token

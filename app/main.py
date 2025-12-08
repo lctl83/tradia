@@ -10,7 +10,7 @@ from typing import Optional
 
 from fastapi import FastAPI, Form, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi.responses import HTMLResponse, JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
@@ -167,6 +167,159 @@ async def translate_text_endpoint(
     )
 
     return {"translated_text": translated_text}
+
+
+# ============================================================================
+# STREAMING ENDPOINTS - Affichage progressif des réponses
+# ============================================================================
+
+
+async def _stream_generator(translator: OllamaTranslator, generator, feature_name: str):
+    """Générateur SSE pour le streaming des tokens."""
+    try:
+        async for token in generator:
+            # Format SSE: data: {"token": "..."}
+            yield f"data: {json.dumps({'token': token})}\n\n"
+        yield "data: [DONE]\n\n"
+    except Exception as e:
+        logger.log("ERROR", f"Streaming error for {feature_name}", error=str(e))
+        yield f"data: {json.dumps({'error': str(e)})}\n\n"
+    finally:
+        await translator.close()
+
+
+@app.post("/translate-text-stream")
+async def translate_text_stream_endpoint(
+    text: str = Form(...),
+    source_lang: str = Form(...),
+    target_lang: str = Form(...),
+    model: Optional[str] = Form(None),
+) -> StreamingResponse:
+    """Traduit un texte via Ollama avec streaming progressif."""
+    if source_lang not in settings.SUPPORTED_LANGUAGES:
+        raise HTTPException(400, f"Unsupported source language: {source_lang}")
+
+    if target_lang not in settings.SUPPORTED_LANGUAGES:
+        raise HTTPException(400, f"Unsupported target language: {target_lang}")
+
+    if source_lang == target_lang:
+        raise HTTPException(400, "Source and target languages must be different")
+
+    if not text.strip():
+        raise HTTPException(400, "Text to translate cannot be empty")
+
+    translator = OllamaTranslator()
+    generator = translator.translate_text_stream(text, source_lang, target_lang, model)
+
+    metrics.text_translations += 1
+    logger.log(
+        "INFO",
+        "Text translation stream started",
+        source_lang=source_lang,
+        target_lang=target_lang,
+        model=model or settings.OLLAMA_MODEL,
+    )
+
+    return StreamingResponse(
+        _stream_generator(translator, generator, "translation"),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",
+        },
+    )
+
+
+@app.post("/correct-text-stream")
+async def correct_text_stream_endpoint(
+    text: str = Form(...),
+    model: Optional[str] = Form(None),
+) -> StreamingResponse:
+    """Corrige un texte avec streaming progressif."""
+    if not text.strip():
+        raise HTTPException(400, "Text to correct cannot be empty")
+
+    translator = OllamaTranslator()
+    generator = translator.correct_text_stream(text, model)
+
+    metrics.corrections += 1
+    logger.log("INFO", "Text correction stream started", model=model or settings.OLLAMA_MODEL)
+
+    return StreamingResponse(
+        _stream_generator(translator, generator, "correction"),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",
+        },
+    )
+
+
+@app.post("/reformulate-text-stream")
+async def reformulate_text_stream_endpoint(
+    text: str = Form(...),
+    model: Optional[str] = Form(None),
+) -> StreamingResponse:
+    """Reformule un texte avec streaming progressif."""
+    if not text.strip():
+        raise HTTPException(400, "Text to reformulate cannot be empty")
+
+    translator = OllamaTranslator()
+    generator = translator.reformulate_text_stream(text, model)
+
+    metrics.reformulations += 1
+    logger.log("INFO", "Text reformulation stream started", model=model or settings.OLLAMA_MODEL)
+
+    return StreamingResponse(
+        _stream_generator(translator, generator, "reformulation"),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",
+        },
+    )
+
+
+@app.post("/meeting-summary-stream")
+async def meeting_summary_stream_endpoint(
+    text: str = Form(""),
+    image_base64: Optional[str] = Form(None),
+    model: Optional[str] = Form(None),
+) -> StreamingResponse:
+    """Génère un compte rendu avec streaming progressif."""
+    has_text = text.strip() if text else False
+    has_image = image_base64 and len(image_base64) > 100
+
+    if not has_text and not has_image:
+        raise HTTPException(400, "Veuillez fournir des notes texte ou une image")
+
+    translator = OllamaTranslator()
+    generator = translator.summarize_meeting_stream(
+        text=text if has_text else None,
+        image_base64=image_base64 if has_image else None,
+        model=model,
+    )
+
+    metrics.meeting_summaries += 1
+    logger.log(
+        "INFO",
+        "Meeting summary stream started",
+        model=model or settings.OLLAMA_MODEL,
+        has_image=has_image,
+    )
+
+    return StreamingResponse(
+        _stream_generator(translator, generator, "meeting_summary"),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",
+        },
+    )
 
 
 def _load_json_payload(raw_payload: str, context: str) -> dict:

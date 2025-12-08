@@ -5,6 +5,18 @@ Toutes les modifications notables de ce projet seront documentées dans ce fichi
 Le format est basé sur [Keep a Changelog](https://keepachangelog.com/fr/1.0.0/),
 et ce projet adhère au [Semantic Versioning](https://semver.org/lang/fr/).
 
+## [2.1.0] - 2025-12-08
+
+### Ajouté
+- **Affichage progressif (Streaming)** : Les réponses de l'IA s'affichent maintenant en temps réel, token par token, comme sur ChatGPT ou Gemini
+- Nouveaux endpoints streaming : `/translate-text-stream`, `/correct-text-stream`, `/reformulate-text-stream`, `/meeting-summary-stream`
+- Fonction JavaScript `streamRequest()` pour gérer les flux SSE côté frontend
+- Messages de progression adaptés pendant le streaming ("L'IA génère la traduction...")
+
+### Modifié
+- Le frontend utilise maintenant les endpoints streaming par défaut pour une meilleure UX
+- Auto-scroll vers le bas pendant la génération progressivedu texte
+
 ## [2.0.0] - 2025-12-08
 
 ### Ajouté

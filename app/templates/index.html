@@ -724,6 +724,102 @@
             summary: 'Génération du compte rendu...',
         };
 
+        const streamingMessages = {
+            translation: 'L\'IA génère la traduction...',
+            correction: 'L\'IA corrige le texte...',
+            reformulation: 'L\'IA reformule le texte...',
+            summary: 'L\'IA génère le compte rendu...',
+        };
+
+        // ============================================================================
+        // STREAMING HELPER - Affichage progressif des réponses
+        // ============================================================================
+
+        /**
+         * Effectue une requête streaming et affiche les tokens progressivement.
+         * @param {string} url - URL de l'endpoint streaming
+         * @param {FormData} formData - Données du formulaire
+         * @param {HTMLElement} outputElement - Élément où afficher les tokens (textarea ou div)
+         * @param {Function} onComplete - Callback appelé à la fin avec le texte complet
+         * @returns {Promise<string>} - Le texte complet généré
+         */
+        async function streamRequest(url, formData, outputElement, onComplete) {
+            const response = await fetch(url, {
+                method: 'POST',
+                body: formData,
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({}));
+                throw new Error(errorData.detail || 'Erreur de streaming');
+            }
+
+            const reader = response.body.getReader();
+            const decoder = new TextDecoder();
+            let fullText = '';
+
+            // Réinitialiser l'output
+            if (outputElement.tagName === 'TEXTAREA') {
+                outputElement.value = '';
+            } else {
+                outputElement.textContent = '';
+            }
+
+            try {
+                while (true) {
+                    const { done, value } = await reader.read();
+                    if (done) break;
+
+                    const chunk = decoder.decode(value, { stream: true });
+                    const lines = chunk.split('\n');
+
+                    for (const line of lines) {
+                        if (line.startsWith('data: ')) {
+                            const data = line.slice(6).trim();
+
+                            if (data === '[DONE]') {
+                                if (onComplete) {
+                                    onComplete(fullText);
+                                }
+                                return fullText;
+                            }
+
+                            try {
+                                const parsed = JSON.parse(data);
+                                if (parsed.error) {
+                                    throw new Error(parsed.error);
+                                }
+                                if (parsed.token) {
+                                    fullText += parsed.token;
+                                    // Mise à jour progressive de l'affichage
+                                    if (outputElement.tagName === 'TEXTAREA') {
+                                        outputElement.value = fullText;
+                                        // Auto-scroll vers le bas
+                                        outputElement.scrollTop = outputElement.scrollHeight;
+                                    } else {
+                                        outputElement.textContent = fullText;
+                                        outputElement.scrollTop = outputElement.scrollHeight;
+                                    }
+                                }
+                            } catch (e) {
+                                if (e.message && !e.message.includes('JSON')) {
+                                    throw e;
+                                }
+                                // Ignorer les erreurs de parsing JSON (lignes incomplètes)
+                            }
+                        }
+                    }
+                }
+            } finally {
+                reader.releaseLock();
+            }
+
+            if (onComplete) {
+                onComplete(fullText);
+            }
+            return fullText;
+        }
+
         tabButtons.forEach((button) => {
             button.addEventListener('click', () => {
                 const tab = button.dataset.tab;
@@ -996,6 +1092,61 @@
         targetLang.addEventListener('change', updateLanguageDirection);
         updateTargetLanguageOptions(); // Initialiser au chargement
 
+        /**
+         * Parse une réponse JSON potentiellement enveloppée dans du markdown.
+         */
+        function parseJsonResponse(rawText) {
+            // Essayer d'extraire un bloc ```json ... ```
+            const jsonBlockMatch = rawText.match(/```json\s*([\s\S]*?)\s*```/);
+            if (jsonBlockMatch) {
+                try {
+                    return JSON.parse(jsonBlockMatch[1].trim());
+                } catch (e) { }
+            }
+
+            // Essayer de trouver un objet JSON dans le texte
+            const braceStart = rawText.indexOf('{');
+            if (braceStart !== -1) {
+                let depth = 0;
+                let inString = false;
+                let escapeNext = false;
+
+                for (let i = braceStart; i < rawText.length; i++) {
+                    const char = rawText[i];
+
+                    if (escapeNext) {
+                        escapeNext = false;
+                        continue;
+                    }
+                    if (char === '\\') {
+                        escapeNext = true;
+                        continue;
+                    }
+                    if (char === '"') {
+                        inString = !inString;
+                    } else if (!inString) {
+                        if (char === '{') depth++;
+                        else if (char === '}') {
+                            depth--;
+                            if (depth === 0) {
+                                try {
+                                    return JSON.parse(rawText.slice(braceStart, i + 1));
+                                } catch (e) { }
+                                break;
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Fallback: essayer de parser directement
+            try {
+                return JSON.parse(rawText.trim());
+            } catch (e) {
+                return null;
+            }
+        }
+
         form.addEventListener('submit', async (event) => {
             event.preventDefault();
             errorDiv.style.display = 'none';
@@ -1006,11 +1157,10 @@
             }
 
             activeButton.disabled = true;
-            progressText.textContent = progressMessages[activeTab] || 'Traitement en cours...';
+            progressText.textContent = streamingMessages[activeTab] || progressMessages[activeTab] || 'Traitement en cours...';
             progress.style.display = 'block';
 
             try {
-                let response;
                 const formData = new FormData();
                 if (modelSelect.value) {
                     formData.append('model', modelSelect.value);
@@ -1022,62 +1172,62 @@
                         formData.append('source_lang', sourceLang.value);
                         formData.append('target_lang', targetLang.value);
 
-                        response = await fetch('/translate-text', {
-                            method: 'POST',
-                            body: formData,
-                        });
-
-                        if (!response.ok) {
-                            const error = await response.json().catch(() => ({}));
-                            throw new Error(error.detail || 'Erreur lors de la traduction');
-                        }
-
-                        const data = await response.json();
-                        translationOutput.value = data.translated_text || '';
+                        // Utiliser le streaming pour la traduction
+                        await streamRequest(
+                            '/translate-text-stream',
+                            formData,
+                            translationOutput
+                        );
                         break;
                     }
                     case 'correction': {
                         formData.append('text', correctionInput.value);
 
-                        response = await fetch('/correct-text', {
-                            method: 'POST',
-                            body: formData,
-                        });
+                        // Streaming : afficher le JSON brut pendant la génération
+                        // puis parser à la fin pour extraire les données structurées
+                        const rawResponse = await streamRequest(
+                            '/correct-text-stream',
+                            formData,
+                            correctionOutput  // Affiche temporairement dans le textarea caché
+                        );
 
-                        if (!response.ok) {
-                            const error = await response.json().catch(() => ({}));
-                            throw new Error(error.detail || 'Erreur lors de la correction');
+                        // Parser le JSON une fois le streaming terminé
+                        const data = parseJsonResponse(rawResponse);
+                        if (data) {
+                            const correctedText = data.corrected_text || '';
+                            correctionOutput.value = correctedText;
+
+                            // Générer et afficher le diff avec surlignage
+                            const originalText = correctionInput.value;
+                            correctionDiff.innerHTML = generateDiffHtml(originalText, correctedText);
+
+                            renderList(correctionExplanationList, data.explanations || []);
+                            correctionExplanations.style.display = (data.explanations && data.explanations.length) ? 'block' : 'none';
+                        } else {
+                            // Si le parsing échoue, afficher le texte brut
+                            correctionDiff.textContent = rawResponse;
+                            correctionExplanations.style.display = 'none';
                         }
-
-                        const data = await response.json();
-                        const correctedText = data.corrected_text || '';
-                        correctionOutput.value = correctedText;
-
-                        // Générer et afficher le diff avec surlignage
-                        const originalText = correctionInput.value;
-                        correctionDiff.innerHTML = generateDiffHtml(originalText, correctedText);
-
-                        renderList(correctionExplanationList, data.explanations || []);
-                        correctionExplanations.style.display = (data.explanations && data.explanations.length) ? 'block' : 'none';
                         break;
                     }
                     case 'reformulation': {
                         formData.append('text', reformulationInput.value);
 
-                        response = await fetch('/reformulate-text', {
-                            method: 'POST',
-                            body: formData,
-                        });
+                        // Streaming avec parsing JSON à la fin
+                        const rawResponse = await streamRequest(
+                            '/reformulate-text-stream',
+                            formData,
+                            reformulationOutput
+                        );
 
-                        if (!response.ok) {
-                            const error = await response.json().catch(() => ({}));
-                            throw new Error(error.detail || 'Erreur lors de la reformulation');
+                        const data = parseJsonResponse(rawResponse);
+                        if (data) {
+                            reformulationOutput.value = data.reformulated_text || rawResponse;
+                            renderList(reformulationHighlightList, data.highlights || []);
+                            reformulationHighlights.style.display = (data.highlights && data.highlights.length) ? 'block' : 'none';
+                        } else {
+                            reformulationHighlights.style.display = 'none';
                         }
-
-                        const data = await response.json();
-                        reformulationOutput.value = data.reformulated_text || '';
-                        renderList(reformulationHighlightList, data.highlights || []);
-                        reformulationHighlights.style.display = (data.highlights && data.highlights.length) ? 'block' : 'none';
                         break;
                     }
                     case 'summary': {
@@ -1088,20 +1238,19 @@
                             formData.append('image_base64', summaryImageBase64);
                         }
 
-                        response = await fetch('/meeting-summary', {
-                            method: 'POST',
-                            body: formData,
-                        });
+                        // Streaming avec parsing JSON à la fin
+                        const rawResponse = await streamRequest(
+                            '/meeting-summary-stream',
+                            formData,
+                            summaryOutput
+                        );
 
-                        if (!response.ok) {
-                            const error = await response.json().catch(() => ({}));
-                            throw new Error(error.detail || 'Erreur lors de la génération du compte rendu');
+                        const data = parseJsonResponse(rawResponse);
+                        if (data) {
+                            summaryOutput.value = data.summary || rawResponse;
+                            renderList(summaryDecisions, data.decisions || []);
+                            renderList(summaryActions, data.action_items || []);
                         }
-
-                        const data = await response.json();
-                        summaryOutput.value = data.summary || '';
-                        renderList(summaryDecisions, data.decisions || []);
-                        renderList(summaryActions, data.action_items || []);
 
                         // Clear image after successful processing
                         clearImage();

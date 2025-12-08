@@ -173,4 +173,86 @@ Génère un résumé structuré à partir de notes de réunion.
 
 ---
 
+## Endpoints Streaming (affichage progressif)
+
+Ces endpoints permettent d'afficher les réponses de l'IA progressivement, comme sur ChatGPT. Ils utilisent le format **Server-Sent Events (SSE)**.
+
+### 9. Traduction en streaming
+
+**POST /translate-text-stream**
+
+Mêmes paramètres que `/translate-text`. Retourne un flux SSE.
+
+**Format du flux** :
+```
+data: {"token": "Hello"}
+
+data: {"token": " world"}
+
+data: [DONE]
+```
+
+---
+
+### 10. Correction en streaming
+
+**POST /correct-text-stream**
+
+Mêmes paramètres que `/correct-text`. Le flux contient le JSON généré progressivement.
+
+---
+
+### 11. Reformulation en streaming
+
+**POST /reformulate-text-stream**
+
+Mêmes paramètres que `/reformulate-text`.
+
+---
+
+### 12. Compte rendu en streaming
+
+**POST /meeting-summary-stream**
+
+Mêmes paramètres que `/meeting-summary`.
+
+---
+
+### Utilisation des endpoints streaming (JavaScript)
+
+```javascript
+const formData = new FormData();
+formData.append('text', 'Bonjour le monde');
+formData.append('source_lang', 'fr');
+formData.append('target_lang', 'en');
+
+const response = await fetch('/translate-text-stream', {
+    method: 'POST',
+    body: formData,
+});
+
+const reader = response.body.getReader();
+const decoder = new TextDecoder();
+
+while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    
+    const chunk = decoder.decode(value);
+    const lines = chunk.split('\n');
+    
+    for (const line of lines) {
+        if (line.startsWith('data: ')) {
+            const data = line.slice(6);
+            if (data === '[DONE]') return;
+            
+            const parsed = JSON.parse(data);
+            console.log(parsed.token); // Affiche chaque token
+        }
+    }
+}
+```
+
+---
+
 Chaque endpoint renvoie des erreurs détaillées au format JSON (`{"detail": "message"}`) afin de faciliter l'intégration côté client.
