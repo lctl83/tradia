@@ -502,19 +502,33 @@ function setupCopyHandlers() {
 
 /**
  * Parse une réponse JSON potentiellement enveloppée dans du markdown.
+ * Gère plusieurs formats de sortie des LLMs (blocs markdown, texte avant/après, etc.)
  */
 function parseJsonResponse(rawText) {
-    // Essayer d'extraire un bloc ```json ... ```
-    const jsonBlockMatch = rawText.match(/```json\s*([\s\S]*?)\s*```/);
-    if (jsonBlockMatch) {
-        try {
-            return JSON.parse(jsonBlockMatch[1].trim());
-        } catch (e) { }
+    if (!rawText || typeof rawText !== 'string') {
+        return null;
     }
 
-    // Essayer de trouver un objet JSON dans le texte
-    const braceStart = rawText.indexOf('{');
-    if (braceStart !== -1) {
+    // Stratégie 1: Extraire un bloc ```json ... ``` (ou ``` ... ```)
+    const jsonBlockMatches = rawText.match(/```(?:json)?\s*([\s\S]*?)\s*```/g);
+    if (jsonBlockMatches) {
+        // Essayer chaque bloc, en commençant par le dernier (souvent le plus propre)
+        for (let i = jsonBlockMatches.length - 1; i >= 0; i--) {
+            const match = jsonBlockMatches[i].match(/```(?:json)?\s*([\s\S]*?)\s*```/);
+            if (match) {
+                try {
+                    const parsed = JSON.parse(match[1].trim());
+                    if (parsed && typeof parsed === 'object') {
+                        return parsed;
+                    }
+                } catch (e) { }
+            }
+        }
+    }
+
+    // Stratégie 2: Trouver un objet JSON complet dans le texte
+    let braceStart = rawText.indexOf('{');
+    while (braceStart !== -1) {
         let depth = 0;
         let inString = false;
         let escapeNext = false;
@@ -538,21 +552,29 @@ function parseJsonResponse(rawText) {
                     depth--;
                     if (depth === 0) {
                         try {
-                            return JSON.parse(rawText.slice(braceStart, i + 1));
+                            const parsed = JSON.parse(rawText.slice(braceStart, i + 1));
+                            if (parsed && typeof parsed === 'object') {
+                                return parsed;
+                            }
                         } catch (e) { }
                         break;
                     }
                 }
             }
         }
+        // Essayer le prochain '{'
+        braceStart = rawText.indexOf('{', braceStart + 1);
     }
 
-    // Fallback: essayer de parser directement
+    // Stratégie 3: Parser directement
     try {
-        return JSON.parse(rawText.trim());
-    } catch (e) {
-        return null;
-    }
+        const parsed = JSON.parse(rawText.trim());
+        if (parsed && typeof parsed === 'object') {
+            return parsed;
+        }
+    } catch (e) { }
+
+    return null;
 }
 
 // ============================================================================
@@ -634,12 +656,34 @@ function setupFormHandler() {
                     );
 
                     const data = parseJsonResponse(rawResponse);
-                    if (data) {
-                        reformulationOutput.value = data.reformulated_text || rawResponse;
+                    if (data && data.reformulated_text) {
+                        reformulationOutput.value = data.reformulated_text;
                         renderList(reformulationHighlightList, data.highlights || []);
                         reformulationHighlights.style.display = (data.highlights && data.highlights.length) ? 'block' : 'none';
                     } else {
-                        reformulationHighlights.style.display = 'none';
+                        // Fallback: essayer d'extraire reformulated_text via regex
+                        const textMatch = rawResponse.match(/"reformulated_text"\s*:\s*"((?:[^"\\]|\\.)*)"/);
+                        if (textMatch) {
+                            // Décoder les échappements JSON
+                            try {
+                                reformulationOutput.value = JSON.parse('"' + textMatch[1] + '"');
+                            } catch (e) {
+                                reformulationOutput.value = textMatch[1].replace(/\\n/g, '\n').replace(/\\"/g, '"');
+                            }
+                        }
+                        // Essayer aussi d'extraire highlights
+                        const highlightsMatch = rawResponse.match(/"highlights"\s*:\s*\[([\s\S]*?)\]/);
+                        if (highlightsMatch) {
+                            try {
+                                const highlights = JSON.parse('[' + highlightsMatch[1] + ']');
+                                renderList(reformulationHighlightList, highlights);
+                                reformulationHighlights.style.display = highlights.length ? 'block' : 'none';
+                            } catch (e) {
+                                reformulationHighlights.style.display = 'none';
+                            }
+                        } else {
+                            reformulationHighlights.style.display = 'none';
+                        }
                     }
                     break;
                 }
