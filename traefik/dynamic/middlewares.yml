@@ -1,0 +1,14 @@
+http:
+  middlewares:
+    no-buffering:
+      buffering:
+        maxResponseBodyBytes: 0
+        memResponseBodyBytes: 0
+        maxRequestBodyBytes: 0
+        memRequestBodyBytes: 0
+    streaming:
+      buffering:
+        maxResponseBodyBytes: 0
+        memResponseBodyBytes: 0
+        maxRequestBodyBytes: 0
+        memRequestBodyBytes: 0

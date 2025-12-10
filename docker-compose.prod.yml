@@ -73,6 +73,7 @@ services:
       - "traefik.http.routers.tradia.entrypoints=websecure"
       - "traefik.http.routers.tradia.rule=PathPrefix(`/`)"
       - "traefik.http.routers.tradia.tls=true"
+      - "traefik.http.routers.tradia.middlewares=no-buffering@file"
       - "traefik.http.services.tradia.loadbalancer.server.port=8000"
 
   traefik:
