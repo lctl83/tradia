@@ -509,61 +509,29 @@ function parseJsonResponse(rawText) {
         return null;
     }
 
-    // Stratégie 1: Extraire un bloc ```json ... ``` (ou ``` ... ```)
-    const jsonBlockMatches = rawText.match(/```(?:json)?\s*([\s\S]*?)\s*```/g);
-    if (jsonBlockMatches) {
-        // Essayer chaque bloc, en commençant par le dernier (souvent le plus propre)
-        for (let i = jsonBlockMatches.length - 1; i >= 0; i--) {
-            const match = jsonBlockMatches[i].match(/```(?:json)?\s*([\s\S]*?)\s*```/);
-            if (match) {
-                try {
-                    const parsed = JSON.parse(match[1].trim());
-                    if (parsed && typeof parsed === 'object') {
-                        return parsed;
-                    }
-                } catch (e) { }
-            }
+    // Stratégie 1: Nettoyage agressif des balises Markdown
+    // On enlève simplement les ```json et ``` pour ne garder que le contenu
+    let cleanText = rawText.replace(/```json/gi, '').replace(/```/g, '').trim();
+
+    // Essayer de trouver le premier { et le dernier }
+    const firstBrace = cleanText.indexOf('{');
+    const lastBrace = cleanText.lastIndexOf('}');
+
+    if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
+        try {
+            const jsonCandidate = cleanText.slice(firstBrace, lastBrace + 1);
+            return JSON.parse(jsonCandidate);
+        } catch (e) {
+            // Continue to other strategies if this fails
         }
     }
 
-    // Stratégie 2: Trouver un objet JSON complet dans le texte
-    let braceStart = rawText.indexOf('{');
-    while (braceStart !== -1) {
-        let depth = 0;
-        let inString = false;
-        let escapeNext = false;
-
-        for (let i = braceStart; i < rawText.length; i++) {
-            const char = rawText[i];
-
-            if (escapeNext) {
-                escapeNext = false;
-                continue;
-            }
-            if (char === '\\') {
-                escapeNext = true;
-                continue;
-            }
-            if (char === '"') {
-                inString = !inString;
-            } else if (!inString) {
-                if (char === '{') depth++;
-                else if (char === '}') {
-                    depth--;
-                    if (depth === 0) {
-                        try {
-                            const parsed = JSON.parse(rawText.slice(braceStart, i + 1));
-                            if (parsed && typeof parsed === 'object') {
-                                return parsed;
-                            }
-                        } catch (e) { }
-                        break;
-                    }
-                }
-            }
-        }
-        // Essayer le prochain '{'
-        braceStart = rawText.indexOf('{', braceStart + 1);
+    // Stratégie 2: Regex extraction (pour les cas avec texte autour)
+    const jsonBlockMatch = rawText.match(/```(?:json)?\s*([\s\S]*?)\s*```/i);
+    if (jsonBlockMatch) {
+        try {
+            return JSON.parse(jsonBlockMatch[1].trim());
+        } catch (e) { }
     }
 
     // Stratégie 3: Parser directement
