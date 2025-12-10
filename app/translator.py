@@ -281,12 +281,12 @@ class OllamaTranslator:
             "Tu es chargé de reformuler le texte suivant pour l'améliorer (fluidité, clarté, ton professionnel) tout en conservant le sens. "
             "IMPORTANT: Préserve exactement le même formatage que l'entrée (sauts de ligne, structure, ponctuation). "
             "N'ajoute ni ne supprime aucun formatage. "
-            "Retourne exclusivement un objet JSON avec la structure :\n"
-            "{\n"
-            '  "reformulated_text": "...",\n'
-            '  "highlights": ["..."]\n'
-            "}\n"
-            "La liste 'highlights' doit contenir quelques explications sur les changements importants.\n\n"
+            "Retourne UNIQUEMENT un objet JSON pur (sans blocs markdown ```, sans texte avant/après) avec la structure :\n"
+            '{"reformulated_text": "...", "highlights": ["..."]}\n\n'
+            "RÈGLES STRICTES:\n"
+            "- Ne PAS utiliser de blocs markdown (pas de ```json ou ```)\n"
+            "- Retourner UNIQUEMENT le JSON brut, rien d'autre\n"
+            "- La liste 'highlights' doit contenir quelques explications courtes sur les changements importants\n\n"
             f"Texte à reformuler :\n{text}"
         )
 
@@ -576,12 +576,12 @@ class OllamaTranslator:
             "Tu es chargé de reformuler le texte suivant pour l'améliorer (fluidité, clarté, ton professionnel) tout en conservant le sens. "
             "IMPORTANT: Préserve exactement le même formatage que l'entrée (sauts de ligne, structure, ponctuation). "
             "N'ajoute ni ne supprime aucun formatage. "
-            "Retourne exclusivement un objet JSON avec la structure :\n"
-            "{\n"
-            '  "reformulated_text": "...",\n'
-            '  "highlights": ["..."]\n'
-            "}\n"
-            "La liste 'highlights' doit contenir quelques explications sur les changements importants.\n\n"
+            "Retourne UNIQUEMENT un objet JSON pur (sans blocs markdown ```, sans texte avant/après) avec la structure :\n"
+            '{"reformulated_text": "...", "highlights": ["..."]}\n\n'
+            "RÈGLES STRICTES:\n"
+            "- Ne PAS utiliser de blocs markdown (pas de ```json ou ```)\n"
+            "- Retourner UNIQUEMENT le JSON brut, rien d'autre\n"
+            "- La liste 'highlights' doit contenir quelques explications courtes sur les changements importants\n\n"
             f"Texte à reformuler :\n{text}"
         )
 
