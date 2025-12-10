@@ -67,32 +67,44 @@ class OllamaTranslator:
         ("fr", "en"): (
             "You are a French to English translator. "
             "Translate the user's French text into English. "
-            "Output ONLY the English translation. No explanations, no original text, no extra words."
+            "Output ONLY the English translation. "
+            "Preserve the exact same formatting as the input (line breaks, punctuation, structure). "
+            "Do not add or remove any formatting. No explanations, no extra words."
         ),
         ("fr", "ar"): (
             "أنت مترجم من الفرنسية إلى العربية. "
             "ترجم النص الفرنسي إلى العربية. "
-            "أخرج الترجمة العربية فقط. لا تفسيرات، لا نص أصلي، لا كلمات إضافية."
+            "أخرج الترجمة العربية فقط. "
+            "حافظ على نفس التنسيق الأصلي (فواصل الأسطر، علامات الترقيم، البنية). "
+            "لا تفسيرات، لا كلمات إضافية."
         ),
         ("en", "fr"): (
             "Tu es un traducteur anglais vers français. "
             "Traduis le texte anglais de l'utilisateur en français. "
-            "Retourne UNIQUEMENT la traduction française. Pas d'explications, pas de texte original, pas de mots supplémentaires."
+            "Retourne UNIQUEMENT la traduction française. "
+            "Préserve exactement le même formatage que l'entrée (sauts de ligne, ponctuation, structure). "
+            "N'ajoute ni ne supprime aucun formatage. Pas d'explications, pas de mots supplémentaires."
         ),
         ("en", "ar"): (
             "أنت مترجم من الإنجليزية إلى العربية. "
             "ترجم النص الإنجليزي إلى العربية. "
-            "أخرج الترجمة العربية فقط. لا تفسيرات، لا نص أصلي، لا كلمات إضافية."
+            "أخرج الترجمة العربية فقط. "
+            "حافظ على نفس التنسيق الأصلي (فواصل الأسطر، علامات الترقيم، البنية). "
+            "لا تفسيرات، لا كلمات إضافية."
         ),
         ("ar", "fr"): (
             "Tu es un traducteur arabe vers français. "
             "Traduis le texte arabe de l'utilisateur en français. "
-            "Retourne UNIQUEMENT la traduction française. Pas d'explications, pas de texte original, pas de mots supplémentaires."
+            "Retourne UNIQUEMENT la traduction française. "
+            "Préserve exactement le même formatage que l'entrée (sauts de ligne, ponctuation, structure). "
+            "N'ajoute ni ne supprime aucun formatage. Pas d'explications, pas de mots supplémentaires."
         ),
         ("ar", "en"): (
             "You are an Arabic to English translator. "
             "Translate the user's Arabic text into English. "
-            "Output ONLY the English translation. No explanations, no original text, no extra words."
+            "Output ONLY the English translation. "
+            "Preserve the exact same formatting as the input (line breaks, punctuation, structure). "
+            "Do not add or remove any formatting. No explanations, no extra words."
         ),
     }
 
@@ -267,6 +279,8 @@ class OllamaTranslator:
         prompt = (
             f"{system_instruction}"
             "Tu es chargé de reformuler le texte suivant pour l'améliorer (fluidité, clarté, ton professionnel) tout en conservant le sens. "
+            "IMPORTANT: Préserve exactement le même formatage que l'entrée (sauts de ligne, structure, ponctuation). "
+            "N'ajoute ni ne supprime aucun formatage. "
             "Retourne exclusivement un objet JSON avec la structure :\n"
             "{\n"
             '  "reformulated_text": "...",\n'
@@ -560,6 +574,8 @@ class OllamaTranslator:
         prompt = (
             f"{system_instruction}"
             "Tu es chargé de reformuler le texte suivant pour l'améliorer (fluidité, clarté, ton professionnel) tout en conservant le sens. "
+            "IMPORTANT: Préserve exactement le même formatage que l'entrée (sauts de ligne, structure, ponctuation). "
+            "N'ajoute ni ne supprime aucun formatage. "
             "Retourne exclusivement un objet JSON avec la structure :\n"
             "{\n"
             '  "reformulated_text": "...",\n'
