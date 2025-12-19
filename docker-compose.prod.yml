@@ -13,29 +13,30 @@ services:
     container_name: tradia
     restart: always
     environment:
-      # Configuration Ollama - ministral (rapide) ou magistral (qualitatif)
-      - OLLAMA_BASE_URL=http://host.docker.internal:11434
-      - OLLAMA_MODEL=ministral-3:latest # Rapide. Alternative: magistral:latest (plus lent mais qualitatif)
-      - OLLAMA_TIMEOUT=300 # Plus long pour les gros modèles
+      # Configuration Connexion Serveur IA (Remote)
+      # Remplacer 'http://ip-serveur-ia:11434' par l'IP réelle du serveur IA
+      - OLLAMA_BASE_URL=${OLLAMA_BASE_URL:-http://ip-serveur-ia:11434}
+      - OLLAMA_MODEL=ministral-3:latest
+      - OLLAMA_TIMEOUT=300
       - OLLAMA_MAX_RETRIES=5
       - UVICORN_PORT=8000
 
-      # Configuration
+      # Configuration App
       - MAX_UPLOAD_MB=100
       - BATCH_SIZE=20
 
       # Proxy entreprise
       - HTTP_PROXY=${HTTP_PROXY:-}
       - HTTPS_PROXY=${HTTPS_PROXY:-}
-      - NO_PROXY=${NO_PROXY:-localhost,127.0.0.1,host.docker.internal}
+      - NO_PROXY=${NO_PROXY:-localhost,127.0.0.1}
 
       # Logging production
       - LOG_LEVEL=WARNING
       - DEBUG=false
 
-    # Accès à Ollama sur l'hôte
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
+    # Pas d'extra_hosts nécessaire si on tape sur une IP distante
+    # extra_hosts:
+    #   - "host.docker.internal:host-gateway"
 
     # Healthcheck
     healthcheck:

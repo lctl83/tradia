@@ -1,0 +1,81 @@
+version: '3.8'
+
+# docker-compose.ai.yml
+# Configuration pour le Serveur IA (GPU Node)
+# Usage: docker compose -f docker-compose.ai.yml up -d
+
+services:
+  # Traefik Reverse Proxy pour sécuriser l'accès
+  traefik-ai:
+    image: traefik:v2.11
+    container_name: ai-traefik
+    restart: always
+    command:
+      - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=false"
+      - "--entrypoints.web.address=:11434" # On garde le port standard Ollama pour simplifier, ou 80/443
+    ports:
+      - "11434:11434" # Point d'entrée unique
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+
+  ollama:
+    image: ollama/ollama:latest
+    container_name: ollama-server
+    restart: always
+    # Activation du support GPU NVIDIA
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all # Utilise tous les GPUs disponibles
+              capabilities: [ gpu ]
+
+    # Persistance des modèles
+    volumes:
+      - ollama_data:/root/.ollama
+
+    # Pas d'exposition directe de port - tout passe par Traefik
+    expose:
+      - "11434"
+
+    environment:
+      - OLLAMA_KEEP_ALIVE=24h
+      - OLLAMA_HOST=0.0.0.0
+      - OLLAMA_NUM_PARALLEL=4 # Permet de traiter 4 requêtes simultanés (si VRAM suffisante)
+      - OLLAMA_MAX_QUEUE=512
+      - HTTP_PROXY=${HTTP_PROXY:-}
+      - HTTPS_PROXY=${HTTPS_PROXY:-}
+      - NO_PROXY=${NO_PROXY:-localhost,127.0.0.1}
+
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.ollama.rule=PathPrefix(`/`)"
+      - "traefik.http.routers.ollama.entrypoints=web"
+      # Middleware pour vérifier le Bearer Token (API Key)
+      # On attend un header 'Authorization: Bearer <votre-token-secret>'
+      # Note: C'est une méthode simple. Pour plus de sécu, utiliser BasicAuth ou mTLS.
+      # Ici on triche un peu en utilisant une règle de header via le routeur ou un middleware plugin, 
+      # mais le plus simple standard Traefik est BasicAuth. 
+      # On va utiliser BasicAuth pour plus de robustesse standard.
+      # API Key 'sk-...' correspondra au password. User 'api'.
+      - "traefik.http.middlewares.auth.basicauth.users=${API_AUTH_USER_PASS:-api:$apr1$H6uskkkW$IgXLP6eweziRaBwBM3Dk9.}" # Défaut: api:secret (généré avec htpasswd)
+      - "traefik.http.routers.ollama.middlewares=auth"
+      - "traefik.http.services.ollama.loadbalancer.server.port=11434"
+  # Optionnel : Open WebUI pour gestion et tests locaux du serveur IA
+  # open-webui:
+  #   image: ghcr.io/open-webui/open-webui:main
+  #   container_name: open-webui
+  #   restart: always
+  #   ports:
+  #     - "3000:8080"
+  #   environment:
+  #     - OLLAMA_BASE_URL=http://ollama:11434
+  #   volumes:
+  #     - open-webui_data:/app/backend/data
+  #   depends_on:
+  #     - ollama
+
+volumes:
+  ollama_data: # open-webui_data:

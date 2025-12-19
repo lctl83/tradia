@@ -11,6 +11,7 @@ class Settings:
     OLLAMA_MODEL: str = os.getenv("OLLAMA_MODEL", "mistral-small3.2:latest")
     OLLAMA_TIMEOUT: int = int(os.getenv("OLLAMA_TIMEOUT", "120"))
     OLLAMA_MAX_RETRIES: int = int(os.getenv("OLLAMA_MAX_RETRIES", "3"))
+    OLLAMA_API_KEY: Optional[str] = os.getenv("OLLAMA_API_KEY") # Clé API pour le serveur distant sécurisé
     
     # Upload
     MAX_UPLOAD_MB: int = int(os.getenv("MAX_UPLOAD_MB", "50"))
