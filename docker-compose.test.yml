@@ -1,0 +1,65 @@
+# docker-compose.test.yml
+# Configuration TEST LOCAL avec Ollama
+# Usage: docker compose -f docker-compose.test.yml up -d --build
+
+services:
+  tradia:
+    build: .
+    container_name: tradia-test
+    restart: unless-stopped
+    environment:
+      # Connexion Ollama local (via host.docker.internal)
+      - OLLAMA_BASE_URL=${OLLAMA_BASE_URL:-http://host.docker.internal:11434}
+      - OLLAMA_API_KEY=${OLLAMA_API_KEY:-}
+      - OLLAMA_MODEL=${OLLAMA_MODEL:-ministral-3:3b-cloud}
+      - OLLAMA_TIMEOUT=120
+      - OLLAMA_MAX_RETRIES=3
+      - UVICORN_PORT=8000
+
+      # Configuration App
+      - MAX_UPLOAD_MB=50
+      - BATCH_SIZE=10
+
+      # Logging dev
+      - LOG_LEVEL=INFO
+      - DEBUG=true
+
+    # Accès à Ollama sur l'hôte
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+    # Healthcheck
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:8000/healthz" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+    # Ressources limitées pour test local
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 2G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+
+    # Logs
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+    # Port direct sans Traefik
+    ports:
+      - "8000:8000"
+
+    volumes:
+      - ./logs:/app/logs
+
+networks:
+  default:
+    name: tradia-test-network

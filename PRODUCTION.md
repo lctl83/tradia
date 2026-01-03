@@ -1,90 +1,100 @@
-# 🖥️ Guide de déploiement Production - DELL PowerEdge R760
+# 🖥️ Guide de Déploiement Production - Tradia
 
-## Spécifications du serveur
+## Architecture
+
+```
+┌─────────────────────┐         HTTPS (443)        ┌──────────────────────────────────┐
+│   SOURCES EXTERNES  │ ────────────────────────►  │  SERVEUR IA                      │
+│   (n8n, EDOC, ...)  │      + X-API-Key           │  itapprspia01.dci.local          │
+└─────────────────────┘                            │  (172.20.30.131)                 │
+                                                   │                                  │
+                                                   │  ┌────────────────────────────┐  │
+                                                   │  │ CADDY (Passerelle)         │  │
+                                                   │  │ • Port 443: API Ollama     │  │
+                                                   │  │ • Port 8080: Health Check  │  │
+                                                   │  │ • Port 9180: Métriques     │  │
+                                                   │  └─────────────┬──────────────┘  │
+                                                   │                │                 │
+                                                   │                ▼ localhost:11434 │
+                                                   │  ┌────────────────────────────┐  │
+                                                   │  │ OLLAMA (natif)             │  │
+                                                   │  │ • GPU: NVIDIA L40S (48GB)  │  │
+                                                   │  │ • Modèles: ministral,      │  │
+                                                   │  │            Magistral       │  │
+                                                   │  └────────────────────────────┘  │
+                                                   └──────────────────────────────────┘
+```
+
+## Spécifications
+
+### Serveur Tradia (Application)
 
 | Composant | Configuration |
 |-----------|---------------|
-| **CPU** | Intel Xeon Gold 6526Y (16C/32T @ 2.8 GHz, Turbo) |
-| **RAM** | 256 Go DDR5 @ 5600 MT/s |
-| **GPU** | NVIDIA L40S 48 Go VRAM (PCIe, 350W) |
-| **Stockage** | 1.92 To SSD SAS + 1.92 To NVMe |
+| **OS** | Debian 13 |
+| **CPU** | 2 vCPU |
+| **RAM** | 8 Go |
+| **Stockage** | 50 Go HDD |
+| **Runtime** | Docker |
 
-## 🚀 Optimisations recommandées
+### Serveur IA
 
-### 1. Configuration GPU pour Ollama
+| Composant | Configuration |
+|-----------|---------------|
+| **Hostname** | itapprspia01.dci.local |
+| **IP** | 172.20.30.131 |
+| **GPU** | NVIDIA L40S (48 Go VRAM) |
+| **Passerelle** | Caddy (HTTPS + X-API-Key) |
+| **Modèles** | ministral, Magistral |
 
-```bash
-# Vérifier que le GPU est détecté
-nvidia-smi
+---
 
-# Afficher les processus GPU
-nvidia-smi -l 1
+## Accès à l'API IA
 
-# Vérifier CUDA
-nvcc --version
+### Endpoint
+
+```
+https://itapprspia01.dci.local/api/
 ```
 
-**Si le GPU n'est pas utilisé par Ollama** :
-```bash
-# Installer/mettre à jour les drivers NVIDIA
-sudo apt update
-sudo apt install nvidia-driver-535 nvidia-cuda-toolkit
+### Authentification
 
-# Redémarrer
-sudo reboot
-
-# Après redémarrage, vérifier
-ollama run llama3.2:1b --verbose 2>&1 | grep -i gpu
-```
-
-### 2. Modèles recommandés pour Tradia
-
-| Modèle | VRAM | Vitesse | Qualité | Usage |
-|--------|------|---------|---------|-------|
-| `ministral-3:latest` | ~8-15 Go | ⚡⚡⚡⚡ Rapide | ⭐⭐⭐ | **Par défaut** - Réponses rapides |
-| `magistral:latest` | ~15-24 Go | ⚡⚡ Lent | ⭐⭐⭐⭐⭐ | **Qualitatif** - Meilleur raisonnement |
-
-> **Note** : Avec 48 Go de VRAM, les deux modèles tournent confortablement. Vous pouvez même les charger simultanément.
+Toutes les requêtes doivent inclure le header `X-API-Key` :
 
 ```bash
-# Installer les modèles recommandés
-ollama pull ministral-3:latest
-ollama pull magistral:latest
-
-# Tester les performances
-time ollama run ministral-3:latest "Traduis en anglais: Bonjour le monde"
-time ollama run magistral:latest "Traduis en anglais: Bonjour le monde"
+curl -H "X-API-Key: <votre-clé>" https://itapprspia01.dci.local/api/tags
 ```
 
-### 3. Configuration Ollama optimisée
+### Clés API disponibles
 
-Créer `/etc/systemd/system/ollama.service.d/override.conf` :
+| Application | Usage |
+|-------------|-------|
+| `APP_INTERNE` | Applications internes DCI |
+| `N8N` | Workflows automatisés |
+| `DEV` | Développement et tests |
+| `EDOC` | Plateforme SCENARI |
 
-```ini
-[Service]
-# Écouter sur toutes les interfaces (si frontend distant)
-Environment="OLLAMA_HOST=0.0.0.0:11434"
+> ⚠️ **Les clés sont disponibles sur demande.**
 
-# Nombre de requêtes parallèles
-Environment="OLLAMA_NUM_PARALLEL=4"
+---
 
-# Garder les modèles en mémoire GPU plus longtemps (5 minutes)
-Environment="OLLAMA_KEEP_ALIVE=5m"
+## 🚀 Déploiement
 
-# Utiliser toute la VRAM disponible
-Environment="OLLAMA_GPU_MEMORY_FRACTION=0.95"
-```
+### 1. Configuration
 
-Puis :
-```bash
-sudo systemctl daemon-reload
-sudo systemctl restart ollama
-```
-
-### 4. Déploiement en production
+Créez le fichier `.env` avec vos paramètres :
 
 ```bash
-# Utiliser la configuration de production
+# .env
+OLLAMA_BASE_URL=https://itapprspia01.dci.local/api
+OLLAMA_API_KEY=<votre-clé-api>
+OLLAMA_MODEL=ministral-3:latest
+```
+
+### 2. Lancement
+
+```bash
+# Déployer en production
 docker compose -f docker-compose.prod.yml up -d --build
 
 # Vérifier les logs
@@ -94,46 +104,26 @@ docker compose -f docker-compose.prod.yml logs -f tradia
 docker compose -f docker-compose.prod.yml ps
 ```
 
-## 📊 Monitoring GPU
-
-### Script de surveillance
-
-Créer `monitor-gpu.sh` :
+### 3. Vérification
 
 ```bash
-#!/bin/bash
-watch -n 1 "nvidia-smi --query-gpu=name,temperature.gpu,utilization.gpu,memory.used,memory.total --format=csv"
+# Health check local
+curl http://localhost:8000/healthz
+
+# Test connexion serveur IA
+curl -H "X-API-Key: <votre-clé>" https://itapprspia01.dci.local/api/tags
 ```
 
-### Métriques clés à surveiller
+---
 
-| Métrique | Valeur normale | Alerte si |
-|----------|----------------|-----------|
-| Température GPU | < 75°C | > 85°C |
-| Utilisation GPU | Variable | 100% constant |
-| Mémoire GPU | < 45 Go | > 47 Go |
-| Utilisation CPU | < 50% | > 80% constant |
+## 📊 Modèles disponibles
 
-## 🔒 Sécurité production
+| Modèle | VRAM | Vitesse | Qualité | Usage |
+|--------|------|---------|---------|-------|
+| `ministral-3:latest` | ~8-15 Go | ⚡⚡⚡⚡ Rapide | ⭐⭐⭐ | **Par défaut** - Réponses rapides |
+| `magistral:latest` | ~15-24 Go | ⚡⚡ Lent | ⭐⭐⭐⭐⭐ | **Qualitatif** - Meilleur raisonnement |
 
-### Firewall
-
-```bash
-# Autoriser uniquement les ports nécessaires
-sudo ufw allow 80/tcp
-sudo ufw allow 443/tcp
-sudo ufw deny 8000/tcp  # Bloquer l'accès direct, passer par Traefik
-sudo ufw deny 11434/tcp  # Bloquer Ollama de l'extérieur
-sudo ufw enable
-```
-
-### Limiter l'accès Ollama
-
-Si le frontend est sur le même serveur, Ollama ne doit écouter que localement :
-```bash
-# Dans /etc/systemd/system/ollama.service.d/override.conf
-Environment="OLLAMA_HOST=127.0.0.1:11434"
-```
+---
 
 ## 📈 Benchmarks attendus
 
@@ -155,18 +145,18 @@ Environment="OLLAMA_HOST=127.0.0.1:11434"
 | Reformulation (500 mots) | ~6-10 secondes |
 | Compte rendu (1000 mots) | ~10-15 secondes |
 
+---
+
 ## 🔄 Maintenance
 
-### Mise à jour des modèles
+### Mise à jour de l'application
 
 ```bash
-# Mettre à jour les modèles
-ollama pull ministral-3:latest
-ollama pull magistral:latest
+# Récupérer les dernières modifications
+git pull
 
-# Nettoyer les anciens modèles
-ollama list
-ollama rm ancien-modele
+# Reconstruire et redéployer
+docker compose -f docker-compose.prod.yml up -d --build
 ```
 
 ### Sauvegarde
@@ -175,10 +165,8 @@ ollama rm ancien-modele
 # Sauvegarder la configuration
 cp docker-compose.prod.yml /backup/tradia/
 cp .env /backup/tradia/
-
-# Les modèles Ollama sont dans ~/.ollama/models
 ```
 
 ---
 
-**Configuration validée pour** : DELL PowerEdge R760 + NVIDIA L40S 48 Go
+**Configuration validée pour** : Serveur Tradia (2vCPU/8Go) + Serveur IA itapprspia01.dci.local

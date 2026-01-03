@@ -121,17 +121,15 @@ class OllamaTranslator:
         if settings.HTTPS_PROXY:
             proxies["https://"] = settings.HTTPS_PROXY
 
-        # Authentification pour le serveur sécurisé
-        # On utilise Basic Auth qui est plus standard pour Traefik
-        auth = None
+        # Headers d'authentification pour le serveur IA sécurisé (Caddy)
+        headers: Dict[str, str] = {}
         if settings.OLLAMA_API_KEY:
-            # Username 'api', Password = la clé configurée
-            auth = httpx.BasicAuth(username="api", password=settings.OLLAMA_API_KEY)
+            headers["X-API-Key"] = settings.OLLAMA_API_KEY
 
         self.client = httpx.AsyncClient(
             timeout=self.timeout,
             proxies=proxies or None,
-            auth=auth,
+            headers=headers or None,
             follow_redirects=True,
             limits=httpx.Limits(max_connections=50, max_keepalive_connections=20),
         )

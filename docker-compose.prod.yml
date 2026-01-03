@@ -1,22 +1,22 @@
 # docker-compose.prod.yml
-# Configuration optimisée pour serveur DELL PowerEdge R760 avec NVIDIA L40S
-# Usage: docker compose -f docker-compose.prod.yml up -d
+# Configuration PRODUCTION pour serveur DCI
+# Usage: docker compose -f docker-compose.prod.yml up -d --build
 
 services:
   tradia:
     build:
       context: .
       args:
-        - HTTP_PROXY=http://10.10.25.91:8090
-        - HTTPS_PROXY=http://10.10.25.91:8090
-        - NO_PROXY=localhost,127.0.0.1,host.docker.internal
+        - HTTP_PROXY=${HTTP_PROXY:-}
+        - HTTPS_PROXY=${HTTPS_PROXY:-}
+        - NO_PROXY=localhost,127.0.0.1
     container_name: tradia
     restart: always
     environment:
-      # Configuration Connexion Serveur IA (Remote)
-      # Remplacer 'http://ip-serveur-ia:11434' par l'IP réelle du serveur IA
-      - OLLAMA_BASE_URL=${OLLAMA_BASE_URL:-http://ip-serveur-ia:11434}
-      - OLLAMA_MODEL=ministral-3:latest
+      # Connexion Serveur IA (Caddy + HTTPS)
+      - OLLAMA_BASE_URL=https://itapprspia01.dci.local/api
+      - OLLAMA_API_KEY=${OLLAMA_API_KEY:-}
+      - OLLAMA_MODEL=${OLLAMA_MODEL:-ministral-3:latest}
       - OLLAMA_TIMEOUT=300
       - OLLAMA_MAX_RETRIES=5
       - UVICORN_PORT=8000
@@ -25,18 +25,14 @@ services:
       - MAX_UPLOAD_MB=100
       - BATCH_SIZE=20
 
-      # Proxy entreprise
+      # Proxy entreprise (si nécessaire pour accès externe)
       - HTTP_PROXY=${HTTP_PROXY:-}
       - HTTPS_PROXY=${HTTPS_PROXY:-}
-      - NO_PROXY=${NO_PROXY:-localhost,127.0.0.1}
+      - NO_PROXY=${NO_PROXY:-localhost,127.0.0.1,itapprspia01.dci.local}
 
       # Logging production
       - LOG_LEVEL=WARNING
       - DEBUG=false
-
-    # Pas d'extra_hosts nécessaire si on tape sur une IP distante
-    # extra_hosts:
-    #   - "host.docker.internal:host-gateway"
 
     # Healthcheck
     healthcheck:
@@ -46,12 +42,12 @@ services:
       retries: 5
       start_period: 30s
 
-    # Ressources optimisées pour Xeon Gold 6526Y (16C/32T) et 256 Go RAM
+    # Ressources pour serveur Tradia (2 vCPU, 8 Go RAM)
     deploy:
       resources:
         limits:
-          cpus: '2' # Ajusté pour machine locale (original: 8 pour serveur DELL)
-          memory: 8G # 8 Go RAM suffisant pour l'app web
+          cpus: '2'
+          memory: 8G
         reservations:
           cpus: '1'
           memory: 2G
@@ -68,6 +64,8 @@ services:
 
     volumes:
       - ./logs:/app/logs
+      # Certificats PKI internes DCI (si nécessaire pour HTTPS)
+      - /etc/ssl/certs:/etc/ssl/certs:ro
 
     labels:
       - "traefik.enable=true"
