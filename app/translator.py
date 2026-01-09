@@ -126,12 +126,17 @@ class OllamaTranslator:
         if settings.OLLAMA_API_KEY:
             headers["X-API-Key"] = settings.OLLAMA_API_KEY
 
+        # Utiliser les certificats système au lieu de certifi pour reconnaître les CA internes (DCI)
+        # Le fichier est créé par update-ca-certificates dans le Dockerfile
+        ssl_cert_file = "/etc/ssl/certs/ca-certificates.crt"
+        
         self.client = httpx.AsyncClient(
             timeout=self.timeout,
             proxies=proxies or None,
             headers=headers or None,
             follow_redirects=True,
             limits=httpx.Limits(max_connections=50, max_keepalive_connections=20),
+            verify=ssl_cert_file,
         )
 
     async def __aenter__(self) -> "OllamaTranslator":
