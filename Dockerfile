@@ -68,6 +68,12 @@ RUN set -eux; \
     pip install --no-cache-dir -r requirements.txt && \
     rm -f /tmp/host-proxy.conf
 
+# Copier et installer les certificats CA DCI pour la validation SSL
+# Ces certificats permettent à httpx de valider les connexions vers itapprspia01.dci.local
+COPY certs/DCI-Root-CA.crt /usr/local/share/ca-certificates/DCI-Root-CA.crt
+COPY certs/DCI-Intermediate-CA.crt /usr/local/share/ca-certificates/DCI-Intermediate-CA.crt
+RUN update-ca-certificates
+
 # Copier l'application
 COPY app/ ./app/
 COPY static/ ./static/
