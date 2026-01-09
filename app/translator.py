@@ -223,6 +223,68 @@ class OllamaTranslator:
 
         return await self._generate(payload)
 
+    async def translate_xml_text(
+        self,
+        text: str,
+        source_lang: str,
+        target_lang: str,
+        model: Optional[str] = None,
+    ) -> Optional[str]:
+        """
+        Traduit un texte issu d'un fichier XML avec un prompt strict.
+        
+        Cette méthode utilise un prompt renforcé pour éviter les hallucinations
+        du modèle lors de la traduction de contenu XML (titres courts, phrases isolées).
+        """
+        if not self.circuit_breaker.can_attempt():
+            logger.warning("Circuit breaker OPEN, skipping translation")
+            return None
+
+        lang_names = {
+            'fr': ('French', 'français'),
+            'en': ('English', 'anglais'),
+            'ar': ('Arabic', 'arabe'),
+        }
+
+        source_name = lang_names.get(source_lang, (source_lang, source_lang))
+        target_name = lang_names.get(target_lang, (target_lang, target_lang))
+
+        # Prompt très strict pour éviter les hallucinations
+        strict_prompt = (
+            f"You are a professional translator from {source_name[0]} to {target_name[0]}.\n\n"
+            "CRITICAL RULES:\n"
+            "1. Output ONLY the translated text, nothing else\n"
+            "2. Do NOT add any explanations, definitions, or additional content\n"
+            "3. Do NOT add markdown formatting (no **, no ---, no lists)\n"
+            "4. Do NOT translate if the text is already in the target language\n"
+            "5. Preserve the EXACT structure and punctuation of the original\n"
+            "6. If the text is a single word or title, translate ONLY that word or title\n"
+            "7. NEVER add content that was not in the original text\n\n"
+            f"Translate the following {source_name[0]} text to {target_name[0]}:\n\n"
+            f"{text}"
+        )
+
+        used_model = model or self.model
+        is_cloud = self._is_cloud_model(used_model)
+
+        payload: Dict[str, object] = {
+            "model": used_model,
+            "prompt": strict_prompt,
+            "stream": False,
+        }
+
+        if not is_cloud:
+            payload["system"] = (
+                f"You are a {source_name[0]} to {target_name[0]} translator. "
+                "Output ONLY the translation. No explanations. No formatting. No additional content."
+            )
+            payload["options"] = {
+                "temperature": 0.1,  # Très basse pour réduire la créativité
+                "top_p": 0.8,
+            }
+
+        return await self._generate(payload)
+
     async def correct_text(self, text: str, model: Optional[str] = None) -> Optional[str]:
         """Corrige un texte et fournit des explications au format JSON."""
         if not self.circuit_breaker.can_attempt():

@@ -118,8 +118,8 @@ class ScenariTranslator:
                 status="translating"
             ), None
 
-            # Traduire le texte
-            translated_text = await self.translator.translate_text(
+            # Traduire le texte avec la méthode stricte pour XML
+            translated_text = await self.translator.translate_xml_text(
                 text=original_text,
                 source_lang=source_lang,
                 target_lang=target_lang,

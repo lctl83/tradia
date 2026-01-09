@@ -1033,7 +1033,12 @@ async function handleScenariSubmit() {
 }
 
 function updateScenariProgress(data) {
-    scenariProgressFile.textContent = `Fichier ${data.file_index}/${data.total_files}`;
+    // Afficher la progression par éléments en priorité
+    if (data.total_files > 1) {
+        scenariProgressFile.textContent = `Fichier ${data.file_index}/${data.total_files} - Élément ${data.current_element}/${data.total_elements}`;
+    } else {
+        scenariProgressFile.textContent = `Élément ${data.current_element}/${data.total_elements}`;
+    }
 
     const percent = data.total_elements > 0
         ? Math.round((data.current_element / data.total_elements) * 100)
@@ -1043,10 +1048,11 @@ function updateScenariProgress(data) {
     scenariProgressBar.style.width = `${percent}%`;
 
     if (data.status === 'translating') {
-        scenariProgressDetail.textContent = `${data.filename} - élément ${data.current_element}/${data.total_elements}`;
+        let detail = data.filename;
         if (data.current_text) {
-            scenariProgressDetail.textContent += ` : "${data.current_text}"`;
+            detail += ` : "${data.current_text}"`;
         }
+        scenariProgressDetail.textContent = detail;
     } else if (data.status === 'done') {
         scenariProgressDetail.textContent = `${data.filename} - terminé ✓`;
     } else if (data.status === 'error') {
