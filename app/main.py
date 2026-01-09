@@ -604,7 +604,160 @@ async def list_models() -> JSONResponse:
     return JSONResponse({"models": unique_models, "default_model": default_model})
 
 
+# ============================================================================
+# SCENARI XML TRANSLATION ENDPOINTS
+# ============================================================================
+
+from typing import List
+from fastapi import UploadFile, File
+import base64
+import asyncio
+
+from app.scenari import ScenariTranslator, create_zip_from_results, TranslationResult
+
+
+@app.post("/scenari/preview")
+async def scenari_preview_endpoint(
+    files: List[UploadFile] = File(...),
+) -> dict:
+    """Prévisualise le nombre d'éléments à traduire dans les fichiers XML SCENARI."""
+    results = []
+    total_elements = 0
+    
+    async with OllamaTranslator() as translator:
+        scenari = ScenariTranslator(translator)
+        
+        for file in files:
+            if not file.filename or not file.filename.endswith('.xml'):
+                continue
+            
+            content = await file.read()
+            await file.seek(0)  # Reset pour potentielle lecture ultérieure
+            
+            count = scenari.count_translatable_elements(content)
+            total_elements += count
+            results.append({
+                "filename": file.filename,
+                "elements": count
+            })
+    
+    return {
+        "files": results,
+        "total_elements": total_elements
+    }
+
+
+@app.post("/scenari/translate")
+async def scenari_translate_endpoint(
+    files: List[UploadFile] = File(...),
+    source_lang: str = Form(...),
+    target_lang: str = Form(...),
+    model: Optional[str] = Form(None),
+) -> StreamingResponse:
+    """Traduit des fichiers XML SCENARI avec streaming de progression."""
+    if source_lang not in settings.SUPPORTED_LANGUAGES:
+        raise HTTPException(400, f"Unsupported source language: {source_lang}")
+
+    if target_lang not in settings.SUPPORTED_LANGUAGES:
+        raise HTTPException(400, f"Unsupported target language: {target_lang}")
+
+    if source_lang == target_lang:
+        raise HTTPException(400, "Source and target languages must be different")
+
+    if not files:
+        raise HTTPException(400, "No files provided")
+
+    # Lire tous les fichiers en mémoire
+    file_contents: List[tuple[str, bytes]] = []
+    for file in files:
+        if not file.filename or not file.filename.endswith('.xml'):
+            continue
+        content = await file.read()
+        file_contents.append((file.filename, content))
+
+    if not file_contents:
+        raise HTTPException(400, "No valid XML files provided")
+
+    async def generate_stream():
+        translator = OllamaTranslator()
+        scenari = ScenariTranslator(translator)
+        results: List[TranslationResult] = []
+        
+        try:
+            total_files = len(file_contents)
+            
+            for file_idx, (filename, content) in enumerate(file_contents, 1):
+                async for progress, result in scenari.translate_file(
+                    xml_content=content,
+                    filename=filename,
+                    source_lang=source_lang,
+                    target_lang=target_lang,
+                    model=model,
+                ):
+                    # Émettre la progression
+                    progress_data = {
+                        "type": "progress",
+                        "file_index": file_idx,
+                        "total_files": total_files,
+                        "filename": progress.filename,
+                        "current_element": progress.current_element,
+                        "total_elements": progress.total_elements,
+                        "current_text": progress.current_text,
+                        "status": progress.status,
+                    }
+                    if progress.error_message:
+                        progress_data["error"] = progress.error_message
+                    
+                    yield f"data: {json.dumps(progress_data)}\n\n"
+                    await asyncio.sleep(0)
+                    
+                    if result:
+                        results.append(result)
+            
+            # Générer le fichier résultat
+            if len(results) == 1:
+                # Un seul fichier : retourner directement le contenu
+                result = results[0]
+                content_b64 = base64.b64encode(result.translated_content).decode('utf-8')
+                yield f"data: {json.dumps({'type': 'complete', 'filename': result.translated_filename, 'content_base64': content_b64, 'content_type': 'application/xml'})}\n\n"
+            elif len(results) > 1:
+                # Plusieurs fichiers : créer un ZIP
+                zip_content = create_zip_from_results(results)
+                content_b64 = base64.b64encode(zip_content).decode('utf-8')
+                yield f"data: {json.dumps({'type': 'complete', 'filename': f'scenari_translated_{target_lang}.zip', 'content_base64': content_b64, 'content_type': 'application/zip'})}\n\n"
+            
+            yield "data: [DONE]\n\n"
+            
+        except Exception as e:
+            logger.log("ERROR", "SCENARI translation error", error=str(e))
+            yield f"data: {json.dumps({'type': 'error', 'error': str(e)})}\n\n"
+        finally:
+            await translator.close()
+
+    logger.log(
+        "INFO",
+        "SCENARI translation started",
+        source_lang=source_lang,
+        target_lang=target_lang,
+        file_count=len(file_contents),
+        model=model or settings.OLLAMA_MODEL,
+    )
+
+    return StreamingResponse(
+        generate_stream(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache, no-store, must-revalidate",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",
+            "Transfer-Encoding": "chunked",
+            "Content-Encoding": "identity",
+        },
+    )
+
+
 if __name__ == "__main__":  # pragma: no cover
     import uvicorn
 
     uvicorn.run(app, host="0.0.0.0", port=8000)
+

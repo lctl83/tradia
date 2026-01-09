@@ -56,6 +56,8 @@
                     Reformulation</button>
                 <button type="button" class="tab-button" data-tab="summary" aria-selected="false">🗂️ Compte
                     rendu</button>
+                <button type="button" class="tab-button" data-tab="scenari" aria-selected="false">📄 Documents
+                    SCENARI</button>
             </div>
 
             <div id="translationTab" class="tab-content active" role="tabpanel">
@@ -162,6 +164,66 @@
                     </div>
                 </div>
                 <button type="submit" class="btn" id="summarySubmitBtn">🗂️ Générer le compte rendu</button>
+            </div>
+
+            <div id="scenariTab" class="tab-content" role="tabpanel">
+                <div class="scenari-upload-section">
+                    <div class="scenari-upload-zone" id="scenariUploadZone">
+                        <div class="scenari-upload-icon">📁</div>
+                        <div class="scenari-upload-text">
+                            <strong>Glissez vos fichiers XML SCENARI ici</strong><br>
+                            <small>ou cliquez pour sélectionner (plusieurs fichiers acceptés)</small>
+                        </div>
+                        <input type="file" id="scenariFilesInput" accept=".xml" multiple style="display: none;">
+                    </div>
+
+                    <div class="scenari-files-list" id="scenariFilesList"></div>
+
+                    <div class="scenari-preview" id="scenariPreview" style="display: none;">
+                        <span class="scenari-preview-count">
+                            <strong id="scenariTotalElements">0</strong> éléments à traduire
+                        </span>
+                    </div>
+                </div>
+
+                <div class="language-grid scenari-languages">
+                    <div class="form-group">
+                        <label for="scenari_source_lang">Langue source</label>
+                        <select id="scenari_source_lang" name="scenari_source_lang">
+                            {% for code, name in languages.items() %}
+                            <option value="{{ code }}">{{ name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="scenari_target_lang">Langue cible</label>
+                        <select id="scenari_target_lang" name="scenari_target_lang">
+                            {% for code, name in languages.items() %}
+                            <option value="{{ code }}" {% if code=='en' %}selected{% endif %}>{{ name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+
+                <div class="scenari-progress" id="scenariProgress" style="display: none;">
+                    <div class="scenari-progress-header">
+                        <span id="scenariProgressFile">Fichier 1/1</span>
+                        <span id="scenariProgressPercent">0%</span>
+                    </div>
+                    <div class="progress-bar">
+                        <div class="progress-bar-fill" id="scenariProgressBar"></div>
+                    </div>
+                    <div class="scenari-progress-detail" id="scenariProgressDetail">
+                        Préparation...
+                    </div>
+                </div>
+
+                <div class="scenari-actions">
+                    <button type="submit" class="btn" id="scenariSubmitBtn" disabled>⚡ Traduire les fichiers</button>
+                    <button type="button" class="btn btn-secondary" id="scenariDownloadBtn" style="display: none;">
+                        📥 Télécharger
+                    </button>
+                </div>
             </div>
         </form>
 

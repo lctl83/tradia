@@ -21,6 +21,7 @@ const tabContents = {
     correction: document.getElementById('correctionTab'),
     reformulation: document.getElementById('reformulationTab'),
     summary: document.getElementById('summaryTab'),
+    scenari: document.getElementById('scenariTab'),
 };
 
 const translationInput = document.getElementById('textInput');
@@ -61,6 +62,7 @@ const submitButtons = {
     correction: document.getElementById('correctionSubmitBtn'),
     reformulation: document.getElementById('reformulationSubmitBtn'),
     summary: document.getElementById('summarySubmitBtn'),
+    scenari: document.getElementById('scenariSubmitBtn'),
 };
 
 const progress = document.getElementById('progress');
@@ -73,6 +75,7 @@ const progressMessages = {
     correction: 'Correction en cours...',
     reformulation: 'Reformulation en cours...',
     summary: 'Génération du compte rendu...',
+    scenari: 'Traduction des fichiers SCENARI...',
 };
 
 const streamingMessages = {
@@ -792,3 +795,422 @@ async function loadModels() {
         }
     }
 }
+
+// ============================================================================
+// SCENARI XML TRANSLATION
+// ============================================================================
+
+// SCENARI DOM Elements
+const scenariUploadZone = document.getElementById('scenariUploadZone');
+const scenariFilesInput = document.getElementById('scenariFilesInput');
+const scenariFilesList = document.getElementById('scenariFilesList');
+const scenariPreview = document.getElementById('scenariPreview');
+const scenariTotalElements = document.getElementById('scenariTotalElements');
+const scenariSourceLang = document.getElementById('scenari_source_lang');
+const scenariTargetLang = document.getElementById('scenari_target_lang');
+const scenariProgress = document.getElementById('scenariProgress');
+const scenariProgressFile = document.getElementById('scenariProgressFile');
+const scenariProgressPercent = document.getElementById('scenariProgressPercent');
+const scenariProgressBar = document.getElementById('scenariProgressBar');
+const scenariProgressDetail = document.getElementById('scenariProgressDetail');
+const scenariSubmitBtn = document.getElementById('scenariSubmitBtn');
+const scenariDownloadBtn = document.getElementById('scenariDownloadBtn');
+
+// State for SCENARI
+let scenariFiles = [];
+let scenariDownloadData = null;
+
+function setupScenariHandlers() {
+    if (!scenariUploadZone) return; // Guard if elements don't exist
+
+    // Click to upload
+    scenariUploadZone.addEventListener('click', () => {
+        scenariFilesInput.click();
+    });
+
+    // File input change
+    scenariFilesInput.addEventListener('change', (e) => {
+        if (e.target.files && e.target.files.length > 0) {
+            addScenariFiles(Array.from(e.target.files));
+        }
+    });
+
+    // Drag and drop
+    scenariUploadZone.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        scenariUploadZone.classList.add('drag-over');
+    });
+
+    scenariUploadZone.addEventListener('dragleave', (e) => {
+        e.preventDefault();
+        scenariUploadZone.classList.remove('drag-over');
+    });
+
+    scenariUploadZone.addEventListener('drop', (e) => {
+        e.preventDefault();
+        scenariUploadZone.classList.remove('drag-over');
+        if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+            const xmlFiles = Array.from(e.dataTransfer.files).filter(f => f.name.endsWith('.xml'));
+            addScenariFiles(xmlFiles);
+        }
+    });
+
+    // Download button
+    scenariDownloadBtn.addEventListener('click', () => {
+        if (scenariDownloadData) {
+            downloadScenariResult();
+        }
+    });
+}
+
+function addScenariFiles(files) {
+    const xmlFiles = files.filter(f => f.name.endsWith('.xml'));
+
+    for (const file of xmlFiles) {
+        // Avoid duplicates
+        if (!scenariFiles.some(f => f.name === file.name)) {
+            scenariFiles.push(file);
+        }
+    }
+
+    updateScenariFilesList();
+    updateScenariPreview();
+}
+
+function removeScenariFile(filename) {
+    scenariFiles = scenariFiles.filter(f => f.name !== filename);
+    updateScenariFilesList();
+    updateScenariPreview();
+}
+
+function updateScenariFilesList() {
+    scenariFilesList.innerHTML = '';
+
+    for (const file of scenariFiles) {
+        const fileChip = document.createElement('div');
+        fileChip.className = 'scenari-file-chip';
+        fileChip.innerHTML = `
+            <span class="scenari-file-name">${file.name}</span>
+            <button type="button" class="scenari-file-remove" data-filename="${file.name}">✕</button>
+        `;
+        scenariFilesList.appendChild(fileChip);
+    }
+
+    // Add click handlers for remove buttons
+    scenariFilesList.querySelectorAll('.scenari-file-remove').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            removeScenariFile(btn.dataset.filename);
+        });
+    });
+
+    // Update submit button state
+    scenariSubmitBtn.disabled = scenariFiles.length === 0;
+}
+
+async function updateScenariPreview() {
+    if (scenariFiles.length === 0) {
+        scenariPreview.style.display = 'none';
+        return;
+    }
+
+    try {
+        const formData = new FormData();
+        for (const file of scenariFiles) {
+            formData.append('files', file);
+        }
+
+        const response = await fetch('/scenari/preview', {
+            method: 'POST',
+            body: formData,
+        });
+
+        if (response.ok) {
+            const data = await response.json();
+            scenariTotalElements.textContent = data.total_elements;
+            scenariPreview.style.display = 'block';
+        }
+    } catch (error) {
+        console.warn('Failed to preview SCENARI files', error);
+    }
+}
+
+async function handleScenariSubmit() {
+    if (scenariFiles.length === 0) return;
+
+    scenariSubmitBtn.disabled = true;
+    scenariDownloadBtn.style.display = 'none';
+    scenariProgress.style.display = 'block';
+    scenariDownloadData = null;
+
+    const formData = new FormData();
+    for (const file of scenariFiles) {
+        formData.append('files', file);
+    }
+    formData.append('source_lang', scenariSourceLang.value);
+    formData.append('target_lang', scenariTargetLang.value);
+    if (modelSelect.value) {
+        formData.append('model', modelSelect.value);
+    }
+
+    try {
+        const response = await fetch('/scenari/translate', {
+            method: 'POST',
+            body: formData,
+        });
+
+        if (!response.ok) {
+            throw new Error('Translation request failed');
+        }
+
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+
+        while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+
+            const chunk = decoder.decode(value, { stream: true });
+            const lines = chunk.split('\n');
+
+            for (const line of lines) {
+                if (line.startsWith('data: ')) {
+                    const data = line.slice(6).trim();
+
+                    if (data === '[DONE]') {
+                        scenariProgress.style.display = 'none';
+                        if (scenariDownloadData) {
+                            scenariDownloadBtn.style.display = 'inline-block';
+                        }
+                        continue;
+                    }
+
+                    try {
+                        const parsed = JSON.parse(data);
+
+                        if (parsed.type === 'progress') {
+                            updateScenariProgress(parsed);
+                        } else if (parsed.type === 'complete') {
+                            scenariDownloadData = {
+                                filename: parsed.filename,
+                                content_base64: parsed.content_base64,
+                                content_type: parsed.content_type,
+                            };
+                        } else if (parsed.type === 'error') {
+                            throw new Error(parsed.error);
+                        }
+                    } catch (e) {
+                        if (e.message && !e.message.includes('JSON')) {
+                            throw e;
+                        }
+                    }
+                }
+            }
+        }
+    } catch (error) {
+        showError(error.message);
+        scenariProgress.style.display = 'none';
+    } finally {
+        scenariSubmitBtn.disabled = false;
+    }
+}
+
+function updateScenariProgress(data) {
+    scenariProgressFile.textContent = `Fichier ${data.file_index}/${data.total_files}`;
+
+    const percent = data.total_elements > 0
+        ? Math.round((data.current_element / data.total_elements) * 100)
+        : 0;
+
+    scenariProgressPercent.textContent = `${percent}%`;
+    scenariProgressBar.style.width = `${percent}%`;
+
+    if (data.status === 'translating') {
+        scenariProgressDetail.textContent = `${data.filename} - élément ${data.current_element}/${data.total_elements}`;
+        if (data.current_text) {
+            scenariProgressDetail.textContent += ` : "${data.current_text}"`;
+        }
+    } else if (data.status === 'done') {
+        scenariProgressDetail.textContent = `${data.filename} - terminé ✓`;
+    } else if (data.status === 'error') {
+        scenariProgressDetail.textContent = `${data.filename} - erreur: ${data.error || 'inconnue'}`;
+    }
+}
+
+function downloadScenariResult() {
+    if (!scenariDownloadData) return;
+
+    const byteCharacters = atob(scenariDownloadData.content_base64);
+    const byteNumbers = new Array(byteCharacters.length);
+    for (let i = 0; i < byteCharacters.length; i++) {
+        byteNumbers[i] = byteCharacters.charCodeAt(i);
+    }
+    const byteArray = new Uint8Array(byteNumbers);
+    const blob = new Blob([byteArray], { type: scenariDownloadData.content_type });
+
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = scenariDownloadData.filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+}
+
+// Override form handler to include SCENARI
+const originalSetupFormHandler = setupFormHandler;
+setupFormHandler = function () {
+    form.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        errorDiv.style.display = 'none';
+
+        // Handle SCENARI tab separately
+        if (activeTab === 'scenari') {
+            await handleScenariSubmit();
+            return;
+        }
+
+        const activeButton = submitButtons[activeTab];
+        if (!activeButton) {
+            return;
+        }
+
+        activeButton.disabled = true;
+        progressText.textContent = streamingMessages[activeTab] || progressMessages[activeTab] || 'Traitement en cours...';
+        progress.style.display = 'block';
+
+        try {
+            const formData = new FormData();
+            if (modelSelect.value) {
+                formData.append('model', modelSelect.value);
+            }
+
+            switch (activeTab) {
+                case 'translation': {
+                    formData.append('text', translationInput.value);
+                    formData.append('source_lang', sourceLang.value);
+                    formData.append('target_lang', targetLang.value);
+
+                    await streamRequest(
+                        '/translate-text-stream',
+                        formData,
+                        translationOutput
+                    );
+                    break;
+                }
+                case 'correction': {
+                    formData.append('text', correctionInput.value);
+
+                    const rawResponse = await streamRequest(
+                        '/correct-text-stream',
+                        formData,
+                        correctionOutput
+                    );
+
+                    const data = parseJsonResponse(rawResponse);
+                    if (data) {
+                        const correctedText = data.corrected_text || '';
+                        correctionOutput.value = correctedText;
+
+                        const originalText = correctionInput.value;
+                        correctionDiff.innerHTML = generateDiffHtml(originalText, correctedText);
+
+                        renderList(correctionExplanationList, data.explanations || []);
+                        correctionExplanations.style.display = (data.explanations && data.explanations.length) ? 'block' : 'none';
+                    } else {
+                        correctionDiff.textContent = rawResponse;
+                        correctionExplanations.style.display = 'none';
+                    }
+                    break;
+                }
+                case 'reformulation': {
+                    formData.append('text', reformulationInput.value);
+
+                    const rawResponse = await streamRequest(
+                        '/reformulate-text-stream',
+                        formData,
+                        reformulationOutput
+                    );
+
+                    const data = parseJsonResponse(rawResponse);
+                    if (data && data.reformulated_text) {
+                        reformulationOutput.value = data.reformulated_text;
+                        renderList(reformulationHighlightList, data.highlights || []);
+                        reformulationHighlights.style.display = (data.highlights && data.highlights.length) ? 'block' : 'none';
+                    } else {
+                        const textMatch = rawResponse.match(/"reformulated_text"\s*:\s*"((?:[^"\\]|\\.)*)"/);
+                        if (textMatch) {
+                            try {
+                                reformulationOutput.value = JSON.parse('"' + textMatch[1] + '"');
+                            } catch (e) {
+                                reformulationOutput.value = textMatch[1].replace(/\\n/g, '\n').replace(/\\"/g, '"');
+                            }
+                        }
+                        const highlightsMatch = rawResponse.match(/"highlights"\s*:\s*\[([\s\S]*?)\]/);
+                        if (highlightsMatch) {
+                            try {
+                                const highlights = JSON.parse('[' + highlightsMatch[1] + ']');
+                                renderList(reformulationHighlightList, highlights);
+                                reformulationHighlights.style.display = highlights.length ? 'block' : 'none';
+                            } catch (e) {
+                                reformulationHighlights.style.display = 'none';
+                            }
+                        } else {
+                            reformulationHighlights.style.display = 'none';
+                        }
+                    }
+                    break;
+                }
+                case 'summary': {
+                    formData.append('text', summaryInput.value);
+
+                    if (summaryImageBase64) {
+                        formData.append('image_base64', summaryImageBase64);
+                    }
+
+                    const rawResponse = await streamRequest(
+                        '/meeting-summary-stream',
+                        formData,
+                        summaryOutput
+                    );
+
+                    const data = parseJsonResponse(rawResponse);
+                    if (data) {
+                        summaryOutput.value = data.summary || rawResponse;
+                        renderList(summaryDecisions, data.decisions || []);
+                        renderList(summaryActions, data.action_items || []);
+                    }
+
+                    clearImage();
+                    break;
+                }
+                default:
+                    throw new Error('Onglet inconnu');
+            }
+        } catch (error) {
+            showError(error.message);
+        } finally {
+            activeButton.disabled = false;
+            progress.style.display = 'none';
+        }
+    });
+};
+
+// Update initApp to include SCENARI setup
+const originalInitApp = initApp;
+initApp = function (config) {
+    rtlLanguages = config.rtlLanguages || [];
+    fallbackModel = config.defaultModel || '';
+    rtlLanguageSet = new Set(Array.isArray(rtlLanguages) ? rtlLanguages : []);
+
+    setupTabHandlers();
+    setupCopyHandlers();
+    setupLanguageHandlers();
+    setupImageUploadHandlers();
+    setupScenariHandlers();
+    setupFormHandler();
+    setupScrollSync();
+    loadModels();
+};
+
