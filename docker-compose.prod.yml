@@ -28,7 +28,7 @@ services:
       # Proxy entreprise (si nécessaire pour accès externe)
       - HTTP_PROXY=${HTTP_PROXY:-}
       - HTTPS_PROXY=${HTTPS_PROXY:-}
-      - NO_PROXY=${NO_PROXY:-localhost,127.0.0.1,itapprspia01.dci.local}
+      - NO_PROXY=${NO_PROXY:-localhost,127.0.0.1,tradia.dci.local}
 
       # Logging production
       - LOG_LEVEL=WARNING
@@ -100,7 +100,7 @@ services:
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
       - ./traefik/dynamic:/etc/traefik/dynamic:ro
-      - /etc/ssl/itapprspia:/etc/traefik/certs:ro
+      - /etc/ssl/tradia:/etc/traefik/certs:ro
       - ./logs/traefik:/var/log/traefik
 
 networks:

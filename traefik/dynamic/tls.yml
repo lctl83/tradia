@@ -1,7 +1,7 @@
 tls:
   certificates:
-    - certFile: /etc/traefik/certs/itapprspia.cer
-      keyFile: /etc/traefik/certs/itapprspia.key
+    - certFile: /etc/traefik/certs/tradia.cer
+      keyFile: /etc/traefik/certs/tradia.key
   options:
     default:
       minVersion: VersionTLS12

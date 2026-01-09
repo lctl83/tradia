@@ -64,8 +64,8 @@ Traefik gère la terminaison TLS sur le port 443 et redirige automatiquement le 
 
 Les certificats TLS attendus par Traefik sont montés depuis l'hôte :
 
-- Dossier hôte : `/etc/ssl/itapprspia`
-- Fichiers requis : `itapprspia.cer` et `itapprspia.key`
+- Dossier hôte : `/etc/ssl/tradia`
+- Fichiers requis : `tradia.cer` et `tradia.key`
 
 Ces fichiers sont exposés dans le conteneur Traefik sous `/etc/traefik/certs`, conformément au `docker compose.yml`.
 

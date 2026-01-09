@@ -7,7 +7,7 @@ Ce guide détaille l'infrastructure Tradia et les configurations disponibles.
 ```
 ┌─────────────────┐                              ┌─────────────────────────────┐
 │  Serveur App    │       HTTPS + X-API-Key      │  Serveur IA                 │
-│  (Tradia)       │ ──────────────────────────►  │  itapprspia01.dci.local     │
+│  (Tradia)       │ ──────────────────────────►  │  itapprspia01.dci.local           │
 │                 │                              │                             │
 │  • 2 vCPU       │                              │  • Caddy (passerelle)       │
 │  • 8 Go RAM     │                              │  • Ollama (natif)           │
