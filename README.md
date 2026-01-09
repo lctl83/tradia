@@ -18,43 +18,37 @@ Suite d'assistants linguistiques internes DCI pour traduire, corriger, reformule
 ## 📋 Prérequis
 
 - Docker et Docker Compose
-- Ollama installé et accessible (par défaut sur `http://localhost:11434`)
+- Un serveur IA Ollama accessible (sur un serveur distant ou local)
 - Un modèle Ollama installé (ex: `mistral-small3.2:latest`)
 
-### Vérification d'Ollama
-
-```bash
-# Vérifier qu'Ollama est bien accessible
-curl http://localhost:11434/api/tags
-
-# Si Ollama n'est pas installé, installez-le :
-curl -fsSL https://ollama.com/install.sh | sh
-
-# Télécharger un modèle
-ollama pull mistral-small3.2:latest
-```
+> [!NOTE]
+> L'application et le serveur IA Ollama peuvent être déployés sur des serveurs **distincts**. Cette séparation permet une meilleure allocation des ressources (GPU pour l'IA, CPU classique pour l'application).
 
 ## 🚀 Installation et déploiement
 
 ### Déploiement rapide avec Docker Compose
 
 1. **Cloner ou télécharger le projet** :
+
 ```bash
 cd tradia
 ```
 
-2. **Configurer les variables d'environnement** (optionnel) :
+1. **Configurer les variables d'environnement** (optionnel) :
+
 ```bash
 cp .env.example .env
 # Éditer .env selon vos besoins
 ```
 
-3. **Construire et démarrer l'application** :
+1. **Construire et démarrer l'application** :
+
 ```bash
 docker compose up -d --build
 ```
 
-4. **Vérifier le déploiement** :
+1. **Vérifier le déploiement** :
+
 ```bash
 # Vérifier les logs
 docker compose logs -f
@@ -63,8 +57,8 @@ docker compose logs -f
 curl -k https://localhost/healthz
 ```
 
-5. **Accéder à l'application** :
-Ouvrir votre navigateur à : **https://localhost**
+1. **Accéder à l'application** :
+Ouvrir votre navigateur à : **<https://localhost>**
 
 Traefik gère la terminaison TLS sur le port 443 et redirige automatiquement le trafic HTTP (port 80) vers HTTPS.
 
@@ -75,20 +69,47 @@ Les certificats TLS attendus par Traefik sont montés depuis l'hôte :
 
 Ces fichiers sont exposés dans le conteneur Traefik sous `/etc/traefik/certs`, conformément au `docker compose.yml`.
 
-### Déploiement sur un serveur distant
+### Architecture recommandée : Application et IA sur serveurs distincts
 
-Si vous déployez sur un serveur différent de celui hébergeant Ollama :
+Pour une utilisation en production, il est recommandé de déployer l'application et le serveur IA Ollama sur des serveurs séparés :
 
-1. **Modifier l'URL d'Ollama dans docker compose.yml** :
+```
+┌─────────────────────┐         HTTPS/API Key          ┌─────────────────────┐
+│   Serveur Applicatif│ ◄───────────────────────────► │    Serveur IA       │
+│   (Tradia + Traefik)│                                │ (Ollama + Traefik)  │
+└─────────────────────┘                                └─────────────────────┘
+```
+
+#### 1. Déployer le serveur IA (sur le serveur avec GPU)
+
+```bash
+# Sur le serveur IA
+docker compose -f docker-compose.ai.yml up -d
+```
+
+Ce fichier déploie :
+
+- **Ollama** : serveur de modèles IA
+- **Traefik** : reverse proxy avec terminaison HTTPS et authentification par API Key
+
+#### 2. Configurer le serveur applicatif
+
+```bash
+# Dans votre fichier .env sur le serveur applicatif
+OLLAMA_BASE_URL=https://IP_SERVEUR_IA
+OLLAMA_API_KEY=votre_cle_api_secrete
+```
+
+Ou directement dans `docker-compose.yml` :
+
 ```yaml
 environment:
-  - OLLAMA_BASE_URL=http://IP_SERVEUR_OLLAMA:11434
+  - OLLAMA_BASE_URL=https://IP_SERVEUR_IA
+  - OLLAMA_API_KEY=votre_cle_api_secrete
 ```
 
-2. **Ou utiliser un fichier .env** :
-```bash
-echo "OLLAMA_BASE_URL=http://IP_SERVEUR_OLLAMA:11434" > .env
-```
+> [!IMPORTANT]
+> Le serveur IA est protégé par une API Key. Assurez-vous que la même clé est configurée côté serveur IA (`docker-compose.ai.yml`) et côté application.
 
 ### Déploiement derrière un proxy
 
@@ -101,13 +122,30 @@ HTTPS_PROXY=http://proxy.example.com:8080
 NO_PROXY=localhost,127.0.0.1
 ```
 
+### Installation et vérification d'Ollama (sur le serveur IA)
+
+```bash
+# Vérifier qu'Ollama est bien accessible
+curl http://localhost:11434/api/tags
+
+# Si Ollama n'est pas installé, installez-le :
+curl -fsSL https://ollama.com/install.sh | sh
+
+# Télécharger un modèle
+ollama pull mistral-small3.2:latest
+
+# Vérifier les modèles disponibles
+ollama list
+```
+
 ## 🔧 Configuration
 
 ### Variables d'environnement
 
 | Variable | Défaut | Description |
 |----------|--------|-------------|
-| `OLLAMA_BASE_URL` | `http://localhost:11434` | URL du service Ollama |
+| `OLLAMA_BASE_URL` | `http://localhost:11434` | URL du service Ollama (distant ou local) |
+| `OLLAMA_API_KEY` | - | Clé API pour authentification au serveur IA |
 | `OLLAMA_MODEL` | `mistral-small3.2:latest` | Modèle par défaut |
 | `OLLAMA_TIMEOUT` | `120` | Timeout en secondes |
 | `OLLAMA_MAX_RETRIES` | `3` | Nombre de retries |
@@ -153,6 +191,7 @@ curl -k https://localhost/healthz
 ```
 
 Réponse :
+
 ```json
 {
   "status": "healthy",
@@ -168,6 +207,7 @@ curl -k https://localhost/metrics
 ```
 
 Réponse :
+
 ```json
 {
   "text_translations": 10,
@@ -265,6 +305,8 @@ docker image prune -a
 
 ### Ollama n'est pas accessible
 
+**Si Ollama est sur le même serveur :**
+
 ```bash
 # Vérifier qu'Ollama est démarré
 systemctl status ollama
@@ -274,6 +316,17 @@ systemctl restart ollama
 
 # Tester la connexion
 curl http://localhost:11434/api/tags
+```
+
+**Si Ollama est sur un serveur distant :**
+
+```bash
+# Vérifier la connectivité HTTPS
+curl -k https://IP_SERVEUR_IA/api/tags \
+  -H "Authorization: Bearer VOTRE_API_KEY"
+
+# Vérifier les logs du conteneur IA
+docker compose -f docker-compose.ai.yml logs -f
 ```
 
 ### L'application ne démarre pas
@@ -301,6 +354,7 @@ docker compose up -d
 ### Performance lente
 
 1. Augmenter les ressources Docker :
+
 ```yaml
 deploy:
   resources:
@@ -309,12 +363,13 @@ deploy:
       memory: 4G
 ```
 
-2. Réduire la taille des lots :
+1. Réduire la taille des lots :
+
 ```bash
 BATCH_SIZE=5
 ```
 
-3. Utiliser un modèle plus petit/rapide
+1. Utiliser un modèle plus petit/rapide
 
 ## 📊 Architecture technique
 
@@ -341,6 +396,7 @@ Ce projet est développé pour un usage interne DSI.
 ## 🤝 Support
 
 Pour toute question ou problème :
+
 1. Consulter cette documentation
 2. Vérifier les logs : `docker compose logs`
 3. Tester le healthcheck : `curl -k https://localhost/healthz`
