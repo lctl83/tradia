@@ -85,6 +85,26 @@ const streamingMessages = {
     summary: 'L\'IA génère le compte rendu...',
 };
 
+// SCENARI DOM Elements
+const scenariUploadZone = document.getElementById('scenariUploadZone');
+const scenariFilesInput = document.getElementById('scenariFilesInput');
+const scenariFilesList = document.getElementById('scenariFilesList');
+const scenariPreview = document.getElementById('scenariPreview');
+const scenariTotalElements = document.getElementById('scenariTotalElements');
+const scenariSourceLang = document.getElementById('scenari_source_lang');
+const scenariTargetLang = document.getElementById('scenari_target_lang');
+const scenariProgress = document.getElementById('scenariProgress');
+const scenariProgressFile = document.getElementById('scenariProgressFile');
+const scenariProgressPercent = document.getElementById('scenariProgressPercent');
+const scenariProgressBar = document.getElementById('scenariProgressBar');
+const scenariProgressDetail = document.getElementById('scenariProgressDetail');
+const scenariSubmitBtn = document.getElementById('scenariSubmitBtn');
+const scenariDownloadBtn = document.getElementById('scenariDownloadBtn');
+
+// State for SCENARI
+let scenariFiles = [];
+let scenariDownloadData = null;
+
 // ============================================================================
 // INITIALISATION - Configuration depuis le template
 // ============================================================================
@@ -103,6 +123,7 @@ function initApp(config) {
     setupCopyHandlers();
     setupLanguageHandlers();
     setupImageUploadHandlers();
+    setupScenariHandlers();
     setupFormHandler();
     setupScrollSync();
     loadModels();
@@ -557,6 +578,12 @@ function setupFormHandler() {
         event.preventDefault();
         errorDiv.style.display = 'none';
 
+        // Handle SCENARI tab separately (uses its own progress UI)
+        if (activeTab === 'scenari') {
+            await handleScenariSubmit();
+            return;
+        }
+
         const activeButton = submitButtons[activeTab];
         if (!activeButton) {
             return;
@@ -800,26 +827,6 @@ async function loadModels() {
 // SCENARI XML TRANSLATION
 // ============================================================================
 
-// SCENARI DOM Elements
-const scenariUploadZone = document.getElementById('scenariUploadZone');
-const scenariFilesInput = document.getElementById('scenariFilesInput');
-const scenariFilesList = document.getElementById('scenariFilesList');
-const scenariPreview = document.getElementById('scenariPreview');
-const scenariTotalElements = document.getElementById('scenariTotalElements');
-const scenariSourceLang = document.getElementById('scenari_source_lang');
-const scenariTargetLang = document.getElementById('scenari_target_lang');
-const scenariProgress = document.getElementById('scenariProgress');
-const scenariProgressFile = document.getElementById('scenariProgressFile');
-const scenariProgressPercent = document.getElementById('scenariProgressPercent');
-const scenariProgressBar = document.getElementById('scenariProgressBar');
-const scenariProgressDetail = document.getElementById('scenariProgressDetail');
-const scenariSubmitBtn = document.getElementById('scenariSubmitBtn');
-const scenariDownloadBtn = document.getElementById('scenariDownloadBtn');
-
-// State for SCENARI
-let scenariFiles = [];
-let scenariDownloadData = null;
-
 function setupScenariHandlers() {
     if (!scenariUploadZone) return; // Guard if elements don't exist
 
@@ -1057,160 +1064,3 @@ function downloadScenariResult() {
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
 }
-
-// Override form handler to include SCENARI
-const originalSetupFormHandler = setupFormHandler;
-setupFormHandler = function () {
-    form.addEventListener('submit', async (event) => {
-        event.preventDefault();
-        errorDiv.style.display = 'none';
-
-        // Handle SCENARI tab separately
-        if (activeTab === 'scenari') {
-            await handleScenariSubmit();
-            return;
-        }
-
-        const activeButton = submitButtons[activeTab];
-        if (!activeButton) {
-            return;
-        }
-
-        activeButton.disabled = true;
-        progressText.textContent = streamingMessages[activeTab] || progressMessages[activeTab] || 'Traitement en cours...';
-        progress.style.display = 'block';
-
-        try {
-            const formData = new FormData();
-            if (modelSelect.value) {
-                formData.append('model', modelSelect.value);
-            }
-
-            switch (activeTab) {
-                case 'translation': {
-                    formData.append('text', translationInput.value);
-                    formData.append('source_lang', sourceLang.value);
-                    formData.append('target_lang', targetLang.value);
-
-                    await streamRequest(
-                        '/translate-text-stream',
-                        formData,
-                        translationOutput
-                    );
-                    break;
-                }
-                case 'correction': {
-                    formData.append('text', correctionInput.value);
-
-                    const rawResponse = await streamRequest(
-                        '/correct-text-stream',
-                        formData,
-                        correctionOutput
-                    );
-
-                    const data = parseJsonResponse(rawResponse);
-                    if (data) {
-                        const correctedText = data.corrected_text || '';
-                        correctionOutput.value = correctedText;
-
-                        const originalText = correctionInput.value;
-                        correctionDiff.innerHTML = generateDiffHtml(originalText, correctedText);
-
-                        renderList(correctionExplanationList, data.explanations || []);
-                        correctionExplanations.style.display = (data.explanations && data.explanations.length) ? 'block' : 'none';
-                    } else {
-                        correctionDiff.textContent = rawResponse;
-                        correctionExplanations.style.display = 'none';
-                    }
-                    break;
-                }
-                case 'reformulation': {
-                    formData.append('text', reformulationInput.value);
-
-                    const rawResponse = await streamRequest(
-                        '/reformulate-text-stream',
-                        formData,
-                        reformulationOutput
-                    );
-
-                    const data = parseJsonResponse(rawResponse);
-                    if (data && data.reformulated_text) {
-                        reformulationOutput.value = data.reformulated_text;
-                        renderList(reformulationHighlightList, data.highlights || []);
-                        reformulationHighlights.style.display = (data.highlights && data.highlights.length) ? 'block' : 'none';
-                    } else {
-                        const textMatch = rawResponse.match(/"reformulated_text"\s*:\s*"((?:[^"\\]|\\.)*)"/);
-                        if (textMatch) {
-                            try {
-                                reformulationOutput.value = JSON.parse('"' + textMatch[1] + '"');
-                            } catch (e) {
-                                reformulationOutput.value = textMatch[1].replace(/\\n/g, '\n').replace(/\\"/g, '"');
-                            }
-                        }
-                        const highlightsMatch = rawResponse.match(/"highlights"\s*:\s*\[([\s\S]*?)\]/);
-                        if (highlightsMatch) {
-                            try {
-                                const highlights = JSON.parse('[' + highlightsMatch[1] + ']');
-                                renderList(reformulationHighlightList, highlights);
-                                reformulationHighlights.style.display = highlights.length ? 'block' : 'none';
-                            } catch (e) {
-                                reformulationHighlights.style.display = 'none';
-                            }
-                        } else {
-                            reformulationHighlights.style.display = 'none';
-                        }
-                    }
-                    break;
-                }
-                case 'summary': {
-                    formData.append('text', summaryInput.value);
-
-                    if (summaryImageBase64) {
-                        formData.append('image_base64', summaryImageBase64);
-                    }
-
-                    const rawResponse = await streamRequest(
-                        '/meeting-summary-stream',
-                        formData,
-                        summaryOutput
-                    );
-
-                    const data = parseJsonResponse(rawResponse);
-                    if (data) {
-                        summaryOutput.value = data.summary || rawResponse;
-                        renderList(summaryDecisions, data.decisions || []);
-                        renderList(summaryActions, data.action_items || []);
-                    }
-
-                    clearImage();
-                    break;
-                }
-                default:
-                    throw new Error('Onglet inconnu');
-            }
-        } catch (error) {
-            showError(error.message);
-        } finally {
-            activeButton.disabled = false;
-            progress.style.display = 'none';
-        }
-    });
-};
-
-// Update initApp to include SCENARI setup
-const originalInitApp = initApp;
-initApp = function (config) {
-    rtlLanguages = config.rtlLanguages || [];
-    fallbackModel = config.defaultModel || '';
-    rtlLanguageSet = new Set(Array.isArray(rtlLanguages) ? rtlLanguages : []);
-
-    setupTabHandlers();
-    setupCopyHandlers();
-    setupLanguageHandlers();
-    setupImageUploadHandlers();
-    setupScenariHandlers();
-    setupFormHandler();
-    setupScrollSync();
-    loadModels();
-};
-
