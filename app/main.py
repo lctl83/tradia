@@ -694,22 +694,30 @@ async def scenari_translate_endpoint(
                     target_lang=target_lang,
                     model=model,
                 ):
-                    # Émettre la progression
-                    progress_data = {
-                        "type": "progress",
-                        "file_index": file_idx,
-                        "total_files": total_files,
-                        "filename": progress.filename,
-                        "current_element": progress.current_element,
-                        "total_elements": progress.total_elements,
-                        "current_text": progress.current_text,
-                        "status": progress.status,
-                    }
-                    if progress.error_message:
-                        progress_data["error"] = progress.error_message
+                    # Émettre la progression seulement tous les 5 éléments, au premier, ou à la fin
+                    should_emit = (
+                        progress.current_element == 1 or  # Premier élément
+                        progress.current_element % 5 == 0 or  # Tous les 5 éléments
+                        progress.status == "done" or  # Fichier terminé
+                        progress.status == "error"  # Erreur
+                    )
                     
-                    yield f"data: {json.dumps(progress_data)}\n\n"
-                    await asyncio.sleep(0)
+                    if should_emit:
+                        progress_data = {
+                            "type": "progress",
+                            "file_index": file_idx,
+                            "total_files": total_files,
+                            "filename": progress.filename,
+                            "current_element": progress.current_element,
+                            "total_elements": progress.total_elements,
+                            "current_text": progress.current_text,
+                            "status": progress.status,
+                        }
+                        if progress.error_message:
+                            progress_data["error"] = progress.error_message
+                        
+                        yield f"data: {json.dumps(progress_data)}\n\n"
+                        await asyncio.sleep(0)
                     
                     if result:
                         results.append(result)

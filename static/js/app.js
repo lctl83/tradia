@@ -972,20 +972,28 @@ async function handleScenariSubmit() {
 
         const reader = response.body.getReader();
         const decoder = new TextDecoder();
+        let buffer = '';
 
         while (true) {
             const { done, value } = await reader.read();
             if (done) break;
 
-            const chunk = decoder.decode(value, { stream: true });
-            const lines = chunk.split('\n');
+            buffer += decoder.decode(value, { stream: true });
+            const lines = buffer.split('\n');
+            // Keep incomplete line in buffer
+            buffer = lines.pop() || '';
 
             for (const line of lines) {
                 if (line.startsWith('data: ')) {
                     const data = line.slice(6).trim();
 
                     if (data === '[DONE]') {
-                        scenariProgress.style.display = 'none';
+                        // Traduction terminée - afficher succès
+                        scenariProgressFile.textContent = 'Traduction terminée !';
+                        scenariProgressPercent.textContent = '100%';
+                        scenariProgressBar.style.width = '100%';
+                        scenariProgressDetail.textContent = '✅ Tous les fichiers ont été traduits avec succès';
+
                         if (scenariDownloadData) {
                             scenariDownloadBtn.style.display = 'inline-block';
                         }
@@ -1003,6 +1011,8 @@ async function handleScenariSubmit() {
                                 content_base64: parsed.content_base64,
                                 content_type: parsed.content_type,
                             };
+                            // Afficher immédiatement le bouton télécharger
+                            scenariDownloadBtn.style.display = 'inline-block';
                         } else if (parsed.type === 'error') {
                             throw new Error(parsed.error);
                         }
@@ -1016,7 +1026,7 @@ async function handleScenariSubmit() {
         }
     } catch (error) {
         showError(error.message);
-        scenariProgress.style.display = 'none';
+        scenariProgressDetail.textContent = `❌ Erreur: ${error.message}`;
     } finally {
         scenariSubmitBtn.disabled = false;
     }
