@@ -14,7 +14,7 @@ services:
     restart: always
     environment:
       # Connexion Serveur IA (Caddy + HTTPS)
-      - OLLAMA_BASE_URL=https://itapprspia01.dci.local/api
+      - OLLAMA_BASE_URL=${OLLAMA_BASE_URL:-https://itapprspia01.dci.local}
       - OLLAMA_API_KEY=${OLLAMA_API_KEY:-}
       - OLLAMA_MODEL=${OLLAMA_MODEL:-ministral-3:latest}
       - OLLAMA_TIMEOUT=300

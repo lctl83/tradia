@@ -136,7 +136,7 @@ class OllamaTranslator:
             headers=headers or None,
             follow_redirects=True,
             limits=httpx.Limits(max_connections=50, max_keepalive_connections=20),
-            verify=ssl_cert_file,
+            verify="/etc/ssl/certs/ca-certificates.crt", 
         )
 
     async def __aenter__(self) -> "OllamaTranslator":
